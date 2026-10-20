@@ -1,8 +1,8 @@
 # 决斗幸存者 · Duel Survivor
 
-游戏王主题的 3D 类吸血鬼幸存者（Survivors-like）Roguelike 网页游戏。纯前端实现，无需构建、无后端依赖，打开即玩。
+游戏王主题的 3D 类吸血鬼幸存者（Survivors-like）Roguelike 网页游戏。纯前端实现，无需构建步骤；账号系统与云端进度由 WorkBuddy 云服务提供。
 
-当前版本：**v0.4.3**
+当前版本：**v0.4.2c**（云账号版：注册 / 登录 + 云端存档 + 云端管理后台）
 
 ## 玩法概要
 
@@ -22,11 +22,11 @@
 ## 特性
 
 - 3D 立牌渲染：双层视差浮雕 + 顶点色合并 + 相机距 LOD（近 26×28 / 远 12×13 / Boss 高清 44×48）
-- 卡图全部由 Canvas 程序化绘制（无外部图片资源）
+- 卡图：`data/cardimg/` 内置 160 张真实卡图（157 张卡池 + 三幻神），缺图回落到 ygoprodeck CDN
 - 3D 场景：角色、怪兽、Boss（无名的法老王）、金字塔竞技场、粒子与阴影
 - 怪兽自动索敌攻击，玩家专注走位与卡组决策
 - PC（键鼠）与触屏双方案，虚拟摇杆 + 自适应画质
-- **完全离线**：不依赖任何服务器，进度存于本机浏览器
+- **云账号**：姓名 + 密码注册登录，局外进度（日元 / 卡组 / 成就）自动云同步；无网络时可「离线体验」
 
 ## 本地运行
 
@@ -40,44 +40,46 @@ python -m http.server 8000
 npx serve .
 ```
 
-浏览器打开 `http://localhost:8000` 即可。
+浏览器打开 `http://localhost:8000` 即可（本地启动时云库不可直连，可用「离线体验」按钮；注册 / 登录需在线上域名下使用）。
 
 ## 技术栈
 
 - Three.js r140（UMD 本地引入，IIFE，无构建步骤）
 - 原生 JavaScript / CSS3 / Canvas 2D
-- 无框架、无打包器、无外部网络请求
+- WorkBuddy Cloud SDK（jsDelivr CDN）+ 云数据库 `ds_users` 表
 
 ## 目录结构
 
 ```
-├── index.html        # 用户端入口（纯游戏，无登录、无管理入口）
-├── admin.html        # 管理端（本地存档管理：发放日元 / 授予卡牌 / 解锁决斗者 / 存档维护）
-├── admin-view.html   # 管理端 · 卡牌收集查看
-├── admin.html        # 管理页
-├── admin-view.html   # 管理查看页
+├── index.html        # 用户端入口（登录 / 注册 → 游戏）
+├── admin.html        # 管理端（云端用户管理：发放日元 / 新建账号 / 重置密码 / 查看会话）
+├── admin-view.html   # 管理端 · 单玩家进度与卡牌收集查看
 ├── css/              # 样式
-├── js/               # 游戏逻辑（game.js / models3d.js / card3d.js 等）
-└── data/             # 卡组与配置数据
+├── js/
+│   ├── cloud.js      # 账号系统（注册 / 登录 / 会话 / 进度云同步）
+│   ├── game.js       # 游戏主逻辑
+│   ├── meta.js       # 局外进度（日元 / 卡组 / 成就）
+│   ├── models3d.js   # 3D 建模
+│   ├── card3d.js     # 卡牌立牌
+│   └── touch.js      # 触屏控制
+└── data/
+    ├── cards.js      # 卡池数据
+    └── cardimg/      # 160 张卡图
 ```
 
 ## 用户端与管理端
 
-两个入口互相独立，共用同一份本机存档（localStorage）：
-
 | | 入口 | 用途 |
 |---|---|---|
-| 用户端 | `index.html` | 玩游戏，无登录页、无管理入口，打开即玩 |
-| 管理端 | `admin.html` | 管理本机存档，默认密码 `admin`（进入后可修改） |
+| 用户端 | `index.html` | 注册 / 登录后进入游戏；右上角有「管理员后台 →」入口 |
+| 管理端 | `admin.html` | 用**管理员账号**（`ds_users.is_admin = true`）登录，管理全体玩家 |
 
-管理端能力：**发放日元**（数额正负皆可，另有快捷档 +100/+1,000/+5,000/+10,000/-1,000，或设为指定值）、
-授予卡牌、解锁决斗者、存档导出/导入/重置、修改管理密码、查看卡牌收集。
+管理端能力：查看注册用户与在线情况、**发放日元**（给指定玩家加减，玩家端 15 秒内自动到账）、
+新建玩家账号、重置玩家密码、查看单个玩家的进度与卡牌收集。
 
-发放日元后，若游戏正开在另一个标签页，钱包会通过 `storage` 事件**实时同步**，无需刷新。
-
-> 存档存在浏览器 localStorage 中，换浏览器 / 换域名各存一份，跨环境迁移用管理端的「导出 / 导入存档」。
+账号数据存于云库 `ds_users`：密码仅保存 `SHA-256('ds:v1:' + 密码)` 摘要，明文不出浏览器。
 
 ## 在线游玩
 
-- GitHub Pages（v0.4.3）：https://urim072655-glitch.github.io/duel-survivor/
-- WorkBuddy 托管（旧版 v0.4.2b）：https://duel-survivor.app.workbuddy.host/?sharecode=67N6NH4NTQ
+- WorkBuddy 托管（v0.4.2c · 账号版）：https://duel-survivor.app.workbuddy.host/?sharecode=67N6NH4NTQ
+- GitHub Pages（v0.4.3 · 离线版，无登录）：https://urim072655-glitch.github.io/duel-survivor/
