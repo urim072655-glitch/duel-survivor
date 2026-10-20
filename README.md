@@ -81,10 +81,12 @@ npx serve .
 
 账号数据存于云库 `ds_users`：密码仅保存 `SHA-256('ds:v1:' + 密码)` 摘要，明文不出浏览器。
 
-## 换自己的域名
+## 域名
 
-见工作区根目录的 `域名接入说明.md`：`duelsurvivor.com` 尚未注册，需先购买；DNS 就绪后加 `CNAME` 即可挂到 GitHub Pages。
-**注意 `DS_PUBLIC_CONFIG.endpoint` 永远指向云端原地址**，别名域名只是入口，不能改它。
+**固定使用 WorkBuddy 托管域名**（`duel-survivor.app.workbuddy.host`），不接自定义域名。
+
+- 前端纯静态，可被任意域名托管；`DS_PUBLIC_CONFIG.endpoint` 必须始终指向云端原地址（别名域名只是入口，改它会让登录/存档/发日元全断）
+- 若以后想换域名，照 `域名接入说明.md` 操作（当前状态：已搁置）
 
 ## 在线游玩
 
