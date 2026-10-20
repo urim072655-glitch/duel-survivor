@@ -1,0 +1,112 @@
+# duelsurvivor.com 域名接入说明
+
+> 结论先说：**`duelsurvivor.com` 目前还没有被注册**（Verisign 权威 whois 返回 `No match for "DUELSURVIVOR.COM"`，DNS 查询为 NXDOMAIN）。
+> 所以现在没有任何办法让它指向站点——必须先买下这个域名，拿到 DNS 控制权，剩下的两步我可以直接替你做完。
+
+---
+
+## 一、现在的状态
+
+| 项 | 现状 |
+|---|---|
+| 域名 | `duelsurvivor.com` **未注册**（可注册） |
+| 用户端（推荐） | https://duel-survivor.app.workbuddy.host/?sharecode=67N6NH4NTQ |
+| 管理端（不变） | 同上域名 + `/admin.html`（用户端右上角「管理员后台 →」已固定指向这里） |
+| 代码侧准备 | **已完成**：v0.4.2g，可被任意域名托管，云端仍走原地址 |
+
+### 为什么代码侧已经能换域名
+
+游戏前端是纯静态的，`DS_PUBLIC_CONFIG.endpoint` 写的是**绝对地址**（`https://duel-survivor.app.workbuddy.host`），所以无论页面从哪个域名打开，登录、存档、发日元都连同一个云端库。
+
+已实测（把站点挂在 `http://127.0.0.1:8137` 这种完全不同的源上跑通全链路）：
+
+- 云端 SDK 初始化成功（`sdkOk=true`）
+- **注册**成功，写入云库 `ds_users`
+- **跨域发放日元**：直接改云端 `yen/yenSeq` → 玩家端 `pullYen()` 立即到账（¥5,000 → ¥6,000）
+
+⚠️ **唯一不能改的是 `DS_PUBLIC_CONFIG.endpoint`**。它一旦改成 `https://duelsurvivor.com`，而那个域名实际指向的是纯静态托管（没有云端 API），登录、存档、发日元会**全部失效**。别名域名只是"入口"，云端永远留在原地址。
+
+---
+
+## 二、买域名（只有你能做，约 2 分钟）
+
+任选一家，`.com` 首年通常 ¥60–90：
+
+| 注册商 | 特点 | 备注 |
+|---|---|---|
+| 腾讯云 / 阿里云 | 国内备案、解析一体，中文界面 | 想做国内 CDN 加速就选这个 |
+| Cloudflare Registrar | 成本价、自带免费 CDN/HTTPS | 不需要备案，国内访问一般 |
+| Namecheap / Porkbun | 便宜、支持支付宝/PayPal | 解析在国外，国内访问一般 |
+
+买完告诉我，我需要知道：**域名在哪家注册、你能否进入 DNS 解析控制台**。
+
+---
+
+## 三、路线 A：挂到 GitHub Pages（免费，不需要备案）
+
+买完域名后的全部动作：
+
+**1. DNS 记录（你在注册商控制台加）**
+
+| 类型 | 主机记录 | 值 |
+|---|---|---|
+| CNAME | `www` | `urim072655-glitch.github.io` |
+| A | `@` | `185.199.108.153` |
+| A | `@` | `185.199.109.153` |
+| A | `@` | `185.199.110.153` |
+| A | `@` | `185.199.111.153` |
+
+**2. 仓库根加 `CNAME` 文件**，内容只有一行：
+
+```
+duelsurvivor.com
+```
+
+**3. 开启 Pages 自定义域名 + HTTPS**
+
+仓库 `Settings → Pages → Custom domain` 填 `duelsurvivor.com` → 保存 → 等 DNS 校验通过 → 勾上 `Enforce HTTPS`。
+
+**4. 管理端也跟着走新域名**
+
+管理端是同一个仓库里的 `admin.html`，所以 `https://duelsurvivor.com/admin.html` 也能开。但用户端右上角的入口**故意写死成原域名**——你要是希望管理端也只在新域名下用，说一声我改回来。
+
+> ⚠️ **顺序很重要**：`CNAME` 一推进仓库，`github.io/duel-survivor/` 就会 301 跳转到 `duelsurvivor.com`。所以在 DNS 配好、域名能解析之前，**不要**推这个文件，否则现有链接会直接打不开。
+
+> ⚠️ **速度提醒**：实测国内访问 `github.io`，573KB 的 `three.min.js` 90 秒都下不完。这条路适合给海外玩家 / 自己看，国内玩家建议走路线 B。
+
+---
+
+## 四、路线 B：国内对象存储 + CDN（国内访问快，但要备案）
+
+1. 买域名 + 一台国内云账号（腾讯云 COS / 阿里云 OSS）
+2. **ICP 备案**（个人备案，1–3 周；不备案不能用国内 CDN 加速）
+3. 建存储桶 → 把 `yugioh-survivor-deploy/` 里所有文件传上去（保持目录结构，卡图和 `data/` 必须一起传）
+4. 绑定自定义域名 `duelsurvivor.com` + 免费证书
+5. 设置默认首页 `index.html`，SPA 不需要额外路由规则
+
+不备案的替代：域名接 **Cloudflare**（免费 CDN + HTTPS），源站仍指向 GitHub Pages，比裸 github.io 快一些但国内仍不稳。
+
+---
+
+## 五、换域名前后**不要**动的东西
+
+| 文件 | 位置 | 说明 |
+|---|---|---|
+| `index.html` | 内联 `DS_PUBLIC_CONFIG.endpoint` | 必须保持 `https://duel-survivor.app.workbuddy.host` |
+| `admin.html` / `admin-view.html` | 内联 `DS_PUBLIC_CONFIG` | 同上，三处要一致 |
+| `data/cardimg/` | 160 张卡图 + `index.json` | 换托管必须一起搬，少了就裂图 |
+| `cloud.js` 里的 `yenSeq` 合并逻辑 | — | 发放日元的正确性依赖它，别回退 |
+
+---
+
+## 六、我这边还差的一步
+
+买好域名、DNS 配好之后，告我一声，我直接完成：
+
+1. 仓库根写 `CNAME` 并推送（GitHub Pages 立刻认这个自定义域名）
+2. 调 API 打开 Pages 的自定义域名与 HTTPS
+3. 等证书签发（几分钟）后，从 `https://duelsurvivor.com` 跑一遍完整冒烟：注册 → 登录 → 后台发日元 → 到账 → 卡图加载
+
+---
+
+*最后更新 2026-10-20 · 对应版本 v0.4.2g*
