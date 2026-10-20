@@ -312,6 +312,10 @@ window.DSCLOUD = (function () {
     /* v0.3.5：定期拉取云端余额（管理员后台加减日元自动到账），15s 一次 */
     setInterval(() => { pullYen(); }, 15000);
     setTimeout(() => { pullYen(); }, 4000);
+    /* v0.4.2g：用户端换域名后，玩家常把标签放后台；切回来/聚焦时立刻补拉一次 */
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pullYen(); });
+    window.addEventListener('focus', () => { pullYen(); });
+    window.addEventListener('online', () => { pullYen(); });
   }
 
   return {
