@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>决斗幸存者 · 管理员后台</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%rect width='32'32' rx='6' fill='%23c9a06a'/%3C/svg%3E" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23c9a06a'/%3E%3Ctext x='16' y='23' font-size='18' text-anchor='middle' fill='%231a1206' font-family='serif'%3E管%3C/text%3E%3C/svg%3E" />
 <style>
 :root{--void:#08060f;--panel:#120d1e;--gold:#c9a34e;--gold-l:#f3e0a8;--gold-d:#7a5f22;
   --ink:#f2ecff;--ink-dim:#a89fc0;--red:#e0384a;
@@ -12,26 +12,25 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#1a1030,var(--void) 70%);color:var(--ink);
   font-family:var(--font-ui);display:flex;align-items:flex-start;justify-content:center;padding:6vh 18px}
-.wrap{width:min(880px,100%)}
+.wrap{width:min(1080px,100%)}
 .kicker{font-size:10px;letter-spacing:.42em;color:var(--gold);opacity:.8;text-align:center}
 h1{font-size:26px;font-weight:400;letter-spacing:.3em;text-align:center;margin:10px 0 4px;
   background:linear-gradient(180deg,#fff,#c9a34e);-webkit-background-clip:text;background-clip:text;color:transparent}
 .sub{text-align:center;font-size:12px;color:var(--ink-dim);letter-spacing:.1em;margin-bottom:26px}
 .card{background:linear-gradient(168deg,#1c122e,#0a0614 75%);border:1px solid var(--gold-d);border-radius:6px;
-  padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.6);margin-bottom:16px}
+  padding:26px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
 .hidden{display:none!important}
 label{display:flex;flex-direction:column;gap:6px;font-size:11px;letter-spacing:.14em;color:var(--ink-dim)}
 input{font-family:var(--font-ui);font-size:15px;color:var(--ink);padding:11px 13px;border-radius:3px;
-  background:rgba(8,5,14,.85);border:1px solid rgba(201,163,78,.35);outline:none;width:100%}
+  background:rgba(8,5,14,.85);border:1px solid rgba(201,163,78,.35);outline:none}
 input:focus{border-color:var(--gold)}
-.btn{font-family:var(--font-ui);font-size:14px;letter-spacing:.12em;padding:11px 22px;border-radius:3px;cursor:pointer;
-  border:1px solid var(--gold-d);color:var(--gold-l);background:linear-gradient(180deg,rgba(60,40,100,.55),rgba(20,12,36,.85));transition:.2s;text-decoration:none;display:inline-block}
+.btn{font-family:var(--font-ui);font-size:14px;letter-spacing:.12em;padding:11px 26px;border-radius:3px;cursor:pointer;
+  border:1px solid var(--gold-d);color:var(--gold-l);background:linear-gradient(180deg,rgba(60,40,100,.55),rgba(20,12,36,.85));transition:.2s}
 .btn:hover{border-color:var(--gold)}
 .btn.primary{background:linear-gradient(180deg,#ffe9a8,#d8a33c);color:#2a1c04;font-weight:700;border-color:#ffe9a8}
-.btn.small{font-size:12px;padding:7px 14px}
+.btn.small{font-size:12px;padding:6px 14px}
 .btn.danger{border-color:rgba(224,56,74,.6);color:#ff9a9a}
 .btn.danger:hover{background:rgba(224,56,74,.18)}
-.btn:disabled{opacity:.35;cursor:not-allowed}
 .line{min-height:18px;font-size:12px;letter-spacing:.06em;margin-top:12px;text-align:center}
 .line.bad{color:#ff8a8a}.line.good{color:#8fe0a0}
 /* 登录 */
@@ -42,244 +41,268 @@ input:focus{border-color:var(--gold)}
 .top .who{font-size:13px;color:var(--ink-dim);letter-spacing:.1em}
 .top .who b{color:var(--gold-l)}
 .stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-.stat{flex:1;min-width:130px;background:rgba(201,163,78,.07);border:1px solid rgba(201,163,78,.25);border-radius:4px;padding:12px 16px}
+.stat{flex:1;min-width:140px;background:rgba(201,163,78,.07);border:1px solid rgba(201,163,78,.25);border-radius:4px;padding:12px 16px}
 .stat b{display:block;font-size:22px;color:var(--gold-l);letter-spacing:.04em}
 .stat span{font-size:10px;letter-spacing:.22em;color:var(--ink-dim)}
-h2.sec{font-size:12px;font-weight:400;letter-spacing:.3em;color:var(--gold);border-bottom:1px solid rgba(201,163,78,.25);
-  padding-bottom:8px;margin-bottom:14px}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
-.row>label{flex:1;min-width:160px}
-.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.hint{font-size:11px;color:var(--ink-dim);letter-spacing:.06em;margin-top:10px;line-height:1.7}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media (max-width:640px){.two{grid-template-columns:1fr}}
+/* 工具行 */
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+.tools input{width:220px}
+/* 表格 */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{font-weight:400;color:var(--gold);letter-spacing:.14em;text-align:left;padding:9px 8px;border-bottom:1px solid rgba(201,163,78,.35);white-space:nowrap}
+td{padding:9px 8px;border-bottom:1px solid rgba(201,163,78,.12);color:var(--ink);letter-spacing:.03em;white-space:nowrap}
+tr:hover td{background:rgba(201,163,78,.05)}
+td .tag{font-size:10px;padding:2px 8px;border-radius:999px;border:1px solid rgba(201,163,78,.4);color:var(--gold-l)}
+td .tag.admin{border-color:rgba(224,56,74,.55);color:#ffb3b3}
+td .acts{display:flex;gap:6px}
+.pager{display:flex;gap:8px;justify-content:center;margin-top:16px;font-size:12px;color:var(--ink-dim);letter-spacing:.1em}
+.empty{text-align:center;color:var(--ink-dim);padding:30px 0;letter-spacing:.2em;font-size:12px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="kicker">DUEL SURVIVOR · ADMIN</div>
   <h1>管 理 员 后 台</h1>
-  <div class="sub">本地管理端 · 发放日元 · 授予卡牌 · 决斗者解锁 · 存档维护</div>
+  <div class="sub">账号管理 · 玩家数据查看 · 日元调整 · 新账号起始 ¥5,000</div>
 
   <!-- 登录 -->
   <div class="card" id="login-card">
-    <label>管理员密码<input id="ad-pwd" type="password" placeholder="默认密码 admin" autocomplete="current-password"></label>
-    <button class="btn primary" id="btn-admin-login">进入后台</button>
+    <label>管理员姓名<input id="ad-name" placeholder="admin" autocomplete="username"></label>
+    <label>密码<input id="ad-pwd" type="password" autocomplete="current-password"></label>
+    <button class="btn primary" id="btn-admin-login">登录后台</button>
     <div class="line" id="ad-line"></div>
-    <div class="hint">首次登录使用默认密码 <b style="color:var(--gold-l)">admin</b>，进入后可在「修改密码」中更换。<br>管理端与游戏用户端相互独立，数据均存于本机浏览器。</div>
     <a href="index.html" style="font-size:11px;color:var(--ink-dim);letter-spacing:.14em;text-align:center;text-decoration:none">← 返回游戏</a>
   </div>
 
   <!-- 管理面板 -->
-  <div id="panel" class="hidden">
-    <div class="card">
-      <div class="top">
-        <div class="who">管理员 · <b>本地存档</b></div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <a class="btn small" href="index.html" style="text-decoration:none">打开游戏</a>
-          <a class="btn small" href="admin-view.html" style="text-decoration:none" id="btn-view">卡牌收集</a>
-          <button class="btn small" id="btn-logout">退出</button>
-        </div>
-      </div>
-      <div class="stats">
-        <div class="stat"><b id="st-yen">¥0</b><span>持有日元</span></div>
-        <div class="stat"><b id="st-cards">0</b><span>卡牌种类</span></div>
-        <div class="stat"><b id="st-chars">0/3</b><span>决斗者解锁</span></div>
-        <div class="stat"><b id="st-ach">0/12</b><span>成就</span></div>
-      </div>
-      <div class="line" id="op-line"></div>
-    </div>
-
-    <!-- 发放日元 -->
-    <div class="card">
-      <h2 class="sec">发 放 日 元</h2>
-      <div class="row">
-        <label>发放数额（正数增加，负数扣减）<input id="yen-delta" type="number" placeholder="如 5000 或 -1000"></label>
-        <button class="btn primary" id="btn-yen-delta">发放</button>
-      </div>
-      <div class="chips">
-        <button class="btn small" data-yen="100">+100</button>
-        <button class="btn small" data-yen="1000">+1,000</button>
-        <button class="btn small" data-yen="5000">+5,000</button>
-        <button class="btn small" data-yen="10000">+10,000</button>
-        <button class="btn small" data-yen="-1000">-1,000</button>
-      </div>
-      <div class="row" style="margin-top:16px">
-        <label>直接设置为指定数额<input id="yen-set" type="number" min="0" placeholder="如 99999"></label>
-        <button class="btn" id="btn-yen-set">设置</button>
-      </div>
-      <div class="hint">发放即时写入本机存档；若游戏正开在另一个标签页，钱包会实时同步更新。</div>
-    </div>
-
-    <div class="two">
-      <!-- 授予卡牌 -->
-      <div class="card">
-        <h2 class="sec">授 予 卡 牌</h2>
-        <div class="row">
-          <label>卡牌编号（见「卡牌收集」页）<input id="card-id" type="number" placeholder="如 46986414"></label>
-          <button class="btn" id="btn-grant">授予 1 张</button>
-        </div>
-        <div class="hint">编号必须属于游戏卡池（共 157 张 + 三幻神）。授予后可在卡组编辑中加入卡组。</div>
-      </div>
-
-      <!-- 决斗者解锁 -->
-      <div class="card">
-        <h2 class="sec">决 斗 者 解 锁</h2>
-        <div class="chips" id="char-chips"></div>
-        <div class="hint">解锁决斗者将同时发放其专属主卡组 / 额外卡组 / 初始怪兽。</div>
+  <div class="card hidden" id="panel">
+    <div class="top">
+      <div class="who">管理员：<b id="ad-who">admin</b></div>
+      <div style="display:flex;gap:10px">
+        <a class="btn small" href="index.html" style="text-decoration:none">打开游戏</a>
+        <button class="btn small" id="btn-logout">退出登录</button>
       </div>
     </div>
-
-    <!-- 存档维护 -->
-    <div class="card">
-      <h2 class="sec">存 档 维 护</h2>
-      <div class="chips">
-        <button class="btn small" id="btn-export">导出存档（下载 JSON）</button>
-        <button class="btn small" id="btn-import">导入存档（选择 JSON）</button>
-        <input type="file" id="import-file" accept=".json,application/json" class="hidden">
-        <button class="btn small" id="btn-pwd">修改密码</button>
-        <button class="btn small danger" id="btn-reset">重置存档</button>
-      </div>
-      <div class="hint">重置存档将清空日元 / 卡牌 / 成就等全部进度，恢复初始状态，不可恢复——建议先导出备份。</div>
+    <div class="stats">
+      <div class="stat"><b id="st-total">0</b><span>注册账号</span></div>
+      <div class="stat"><b id="st-today">0</b><span>今日新增</span></div>
+      <div class="stat"><b id="st-online">0</b><span>今日登录</span></div>
     </div>
+    <div class="tools">
+      <label>搜索姓名<input id="q-name" placeholder="按姓名搜索"></label>
+      <label>新账号姓名<input id="nu-name" maxlength="16" placeholder="姓名（唯一）"></label>
+      <label>初始密码<input id="nu-pwd" placeholder="至少 4 位"></label>
+      <button class="btn small primary" id="btn-add">添加账号</button>
+      <button class="btn small" id="btn-refresh">刷新列表</button>
+    </div>
+    <table>
+      <thead><tr>
+        <th>ID</th><th>姓名</th><th>角色</th><th>日元</th><th>卡牌数</th><th>注册时间</th><th>最近登录</th><th>操作</th>
+      </tr></thead>
+      <tbody id="tb"></tbody>
+    </table>
+    <div class="empty hidden" id="empty">没有匹配的账号</div>
+    <div class="pager" id="pager"></div>
+    <div class="line" id="op-line"></div>
   </div>
 </div>
 
-<script src="data/cards.js"></script>
-<script src="js/meta.js"></script>
+<script>
+window.DS_PUBLIC_CONFIG = {
+  endpoint: "https://duel-survivor.app.workbuddy.host",
+  oauthRelayBaseUrl: "https://www.workbuddy.cn/v2/as/genie-baas/oauth",
+  publishableKey: "wbpk_sxEJaFtLNsUkXDTqQEj7X4_VTZCjWgwLQuG2hJH3wATLps0KH2K5viY"
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
 <script>
 (function () {
   'use strict';
   const $ = id => document.getElementById(id);
-  const SESSION_KEY = 'ds_admin_session_v1';
-  const PWD_KEY = 'ds_admin_pwd';
-  const SAVE_KEY = 'ds_save_v3';
-  const CHAR_NAMES = { yugi: '武藤游戏', joey: '城之内克也', kaiba: '海马濑人' };
+  const SALT = 'ds:v1:';
+  const PAGE = 50;
+  let cloud = null, q = '', page = 1;
+  const KEY = 'ds_admin_session_v1';
 
-  /* meta.js 的 grantCard 会调用全局 toast（游戏页才有），这里兜底 */
-  window.toast = window.toast || function () {};
+  async function sha256(s) {
+    const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+    return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+  const hashPwd = p => sha256(SALT + p);
+  const fmtTime = t => t ? new Date(t).toLocaleString('zh-CN', { hour12: false }) : '—';
+  function line(el, msg, good) { el.textContent = msg; el.className = 'line ' + (good ? 'good' : 'bad'); }
 
-  function line(msg, good) { $('op-line').textContent = msg; $('op-line').className = 'line ' + (good ? 'good' : 'bad'); }
-  function fmt(n) { return (n == null ? '—' : (+n).toLocaleString()); }
-  function getPwd() { return localStorage.getItem(PWD_KEY) || 'admin'; }
+  function initCloud() {
+    cloud = WorkBuddyCloud.createWorkBuddyCloud({
+      endpoint: window.DS_PUBLIC_CONFIG.endpoint,
+      oauthRelayBaseUrl: window.DS_PUBLIC_CONFIG.oauthRelayBaseUrl,
+      publishableKey: window.DS_PUBLIC_CONFIG.publishableKey
+    });
+  }
 
   /* ---------- 登录 ---------- */
-  function adminLogin() {
-    const pwd = $('ad-pwd').value;
-    if (!pwd) return line('请输入管理员密码');
-    if (pwd !== getPwd()) return line('密码错误');
-    sessionStorage.setItem(SESSION_KEY, '1');
-    enterPanel();
+  async function adminLogin() {
+    try {
+      const name = $('ad-name').value.trim();
+      const pwd = $('ad-pwd').value;
+      if (!name || !pwd) return line($('ad-line'), '请输入姓名与密码');
+      const h = await hashPwd(pwd);
+      const { data, error } = await cloud.database.from('ds_users')
+        .select('name,is_admin').eq('name', name).eq('pwd_hash', h).maybeSingle();
+      if (error) return line($('ad-line'), '登录失败：' + error.message);
+      if (!data) return line($('ad-line'), '姓名或密码错误');
+      if (!data.is_admin) return line($('ad-line'), '该账号不是管理员');
+      sessionStorage.setItem(KEY, name);
+      $('ad-who').textContent = name;
+      enterPanel();
+    } catch (e) { line($('ad-line'), '异常：' + e.message); }
   }
+
   function enterPanel() {
     $('login-card').classList.add('hidden');
     $('panel').classList.remove('hidden');
-    refreshStats(); renderChars();
-  }
-  function logout() { sessionStorage.removeItem(SESSION_KEY); location.reload(); }
-
-  /* ---------- 统计 ---------- */
-  function refreshStats() {
-    const s = META.save;
-    $('st-yen').textContent = '¥' + fmt(s.yen);
-    $('st-cards').textContent = Object.keys(s.owned || {}).length;
-    $('st-chars').textContent = Object.keys(s.unlocked || {}).filter(k => s.unlocked[k]).length + '/3';
-    $('st-ach').textContent = Object.keys(s.ach || {}).filter(k => s.ach[k]).length + '/' + META.ACH.length;
-  }
-  function renderChars() {
-    const s = META.save;
-    $('char-chips').innerHTML = Object.keys(CHAR_NAMES).map(w =>
-      '<button class="btn small" data-char="' + w + '"' + (s.unlocked && s.unlocked[w] ? ' disabled' : '') + '>' +
-      CHAR_NAMES[w] + (s.unlocked && s.unlocked[w] ? '（已解锁）' : '') + '</button>').join('');
+    loadUsers();
   }
 
-  /* ---------- 发放日元 ---------- */
-  function grantDelta(n) {
-    if (!isFinite(n) || n === 0) return line('请输入非 0 的整数数额', false);
-    const before = META.save.yen || 0;
-    META.addYen(n);
-    const after = META.save.yen;
-    refreshStats();
-    line('日元已发放：¥' + fmt(before) + ' → ¥' + fmt(after) + '（' + (n > 0 ? '+' : '') + fmt(n) + '）', true);
-  }
-  function setYen(n) {
-    if (!isFinite(n) || n < 0) return line('请输入不小于 0 的数额', false);
-    const before = META.save.yen || 0;
-    META.addYen(n - before);
-    refreshStats();
-    line('日元已设置：¥' + fmt(before) + ' → ¥' + fmt(META.save.yen), true);
-  }
+  function logout() { sessionStorage.removeItem(KEY); location.reload(); }
 
-  /* ---------- 存档维护 ---------- */
-  function exportSave() {
-    const blob = new Blob([JSON.stringify(META.save, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'duel-survivor-save-' + new Date().toISOString().slice(0, 10) + '.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
-    line('存档已导出', true);
+  /* ---------- 用户列表 ---------- */
+  async function loadUsers() {
+    const tb = $('tb');
+    tb.innerHTML = '<tr><td colspan="8" style="color:var(--ink-dim)">加载中…</td></tr>';
+    try {
+      let req = cloud.database.from('ds_users').select('*');
+      if (q) req = req.ilike('name', '%' + q + '%');
+      const { count } = await cloud.database.from('ds_users')
+        .select('*', { count: 'exact', head: true }).ilike('name', q ? '%' + q + '%' : '%');
+      const { data, error } = await req
+        .order('created_at', { ascending: false })
+        .range((page - 1) * PAGE, page * PAGE - 1);
+      if (error) throw error;
+      const rows = data || [];
+      $('empty').classList.toggle('hidden', rows.length > 0);
+      tb.innerHTML = rows.map(r => {
+        const d = (typeof r.data === 'string') ? safeParse(r.data) : (r.data || {});
+        const cards = d.owned ? Object.keys(d.owned).length : 0;
+        const isAd = !!r.is_admin;
+        return '<tr>' +
+          '<td>' + r.id + '</td>' +
+          '<td style="color:var(--gold-l)">' + esc(r.name) + '</td>' +
+          '<td>' + (isAd ? '<span class="tag admin">管理员</span>' : '<span class="tag">玩家</span>') + '</td>' +
+          '<td>¥' + (d.yen != null ? (+d.yen).toLocaleString() : '—') + '</td>' +
+          '<td>' + (cards || '—') + '</td>' +
+          '<td>' + fmtTime(r.created_at) + '</td>' +
+          '<td>' + fmtTime(r.last_login) + '</td>' +
+          '<td><div class="acts">' +
+            '<button class="btn small" data-act="view" data-name="' + esc(r.name) + '">查看</button>' +
+            '<button class="btn small" data-act="yen" data-name="' + esc(r.name) + '">加减日元</button>' +
+            '<button class="btn small" data-act="reset" data-name="' + esc(r.name) + '">重置密码</button>' +
+            (isAd ? '' : '<button class="btn small danger" data-act="del" data-name="' + esc(r.name) + '">删除</button>') +
+          '</div></td></tr>';
+      }).join('');
+      /* 统计 */
+      $('st-total').textContent = count != null ? count : rows.length;
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const { count: cNew } = await cloud.database.from('ds_users')
+        .select('*', { count: 'exact', head: true }).gte('created_at', today.toISOString());
+      const { count: cAct } = await cloud.database.from('ds_users')
+        .select('*', { count: 'exact', head: true }).gte('last_login', today.toISOString());
+      $('st-today').textContent = cNew || 0;
+      $('st-online').textContent = cAct || 0;
+      /* 分页 */
+      const pages = Math.max(1, Math.ceil((count || 0) / PAGE));
+      $('pager').innerHTML = pages > 1
+        ? '<button class="btn small" id="pg-prev" ' + (page <= 1 ? 'disabled' : '') + '>上一页</button>' +
+          '<span>第 ' + page + ' / ' + pages + ' 页</span>' +
+          '<button class="btn small" id="pg-next" ' + (page >= pages ? 'disabled' : '') + '>下一页</button>'
+        : '';
+      const pv = $('pg-prev'), nx = $('pg-next');
+      if (pv) pv.addEventListener('click', () => { page--; loadUsers(); });
+      if (nx) nx.addEventListener('click', () => { page++; loadUsers(); });
+    } catch (e) {
+      tb.innerHTML = '';
+      line($('op-line'), '加载失败：' + e.message);
+    }
   }
-  function importSave(file) {
-    const r = new FileReader();
-    r.onload = () => {
-      try {
-        const obj = JSON.parse(r.result);
-        if (!obj || typeof obj !== 'object' || typeof obj.yen !== 'number') throw new Error('不是有效的存档文件');
-        localStorage.setItem(SAVE_KEY, JSON.stringify(obj));
-        META.load();
-        refreshStats(); renderChars();
-        line('存档已导入并生效', true);
-      } catch (e) { line('导入失败：' + e.message, false); }
-    };
-    r.readAsText(file);
+  function safeParse(s) { try { return JSON.parse(s); } catch (e) { return {}; } }
+  function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+  /* ---------- 行操作 ---------- */
+  function viewUser(name) {
+    window.open('admin-view.html?name=' + encodeURIComponent(name), '_blank');
   }
-  function resetSave() {
-    if (!confirm('确定重置存档？日元 / 卡牌 / 成就 / 解锁将全部清空，不可恢复。')) return;
-    localStorage.removeItem(SAVE_KEY);
-    META.load();
-    refreshStats(); renderChars();
-    line('存档已重置为初始状态', true);
+  /* 加减日元：输入可正可负，负数扣减，结果不小于 0 */
+  async function adjustYen(name) {
+    const input = prompt('为「' + name + '」加减日元\n输入变动数额：正数增加，负数扣减（如 1000 或 -500）');
+    if (input == null) return;
+    const delta = Math.round(Number(String(input).trim()));
+    if (!isFinite(delta) || delta === 0) return line($('op-line'), '请输入非 0 的整数数额');
+    try {
+      const { data: rows, error: e1 } = await cloud.database.from('ds_users').select('name,data').eq('name', name).maybeSingle();
+      if (e1) return line($('op-line'), '读取失败：' + e1.message);
+      if (!rows) return line($('op-line'), '账号不存在');
+      const d = (typeof rows.data === 'string') ? safeParse(rows.data) : (rows.data || {});
+      const cur = (typeof d.yen === 'number') ? d.yen : 0;
+      const next = Math.max(0, cur + delta);
+      d.yen = next;
+      /* v0.4.2d：发放版本号 +1，玩家端据此判断“这是新发放”，不会被本地存档覆盖 */
+      d.yenSeq = (typeof d.yenSeq === 'number' ? d.yenSeq : 0) + 1;
+      d.yenGrantedAt = Date.now();
+      const { error: e2 } = await cloud.database.from('ds_users').update({ data: d }).eq('name', name);
+      if (e2) return line($('op-line'), '更新失败：' + e2.message);
+      line($('op-line'), '已调整「' + name + '」日元：¥' + cur.toLocaleString() + ' → ¥' + next.toLocaleString() + '（' + (delta > 0 ? '+' : '') + delta.toLocaleString() + '）', true);
+      loadUsers();
+    } catch (e) { line($('op-line'), '异常：' + e.message); }
   }
-  function changePwd() {
-    const p = prompt('设置新的管理员密码（至少 4 位）：');
-    if (p == null) return;
-    if (p.length < 4) return line('密码至少 4 位', false);
-    localStorage.setItem(PWD_KEY, p);
-    line('密码已修改', true);
+  async function addUser() {
+    const name = $('nu-name').value.trim(), pwd = $('nu-pwd').value;
+    if (!name) return line($('op-line'), '请输入姓名');
+    if (pwd.length < 4) return line($('op-line'), '密码至少 4 位');
+    try {
+      const h = await hashPwd(pwd);
+      const { error } = await cloud.database.from('ds_users').insert({ name, pwd_hash: h, is_admin: false, data: { yen: 5000, yenSeq: 0 } });
+      if (error) { line($('op-line'), (error.code === '23505' || /23505|duplicate|unique constraint/i.test(error.message || '')) ? '该姓名已存在（姓名不可重复）' : '添加失败：' + error.message); return; }
+      line($('op-line'), '已添加账号「' + name + '」', true);
+      $('nu-name').value = ''; $('nu-pwd').value = '';
+      loadUsers();
+    } catch (e) { line($('op-line'), '异常：' + e.message); }
+  }
+  async function resetPwd(name) {
+    const pwd = prompt('为「' + name + '」设置新密码（至少 4 位）：');
+    if (pwd == null) return;
+    if (pwd.length < 4) { line($('op-line'), '密码至少 4 位'); return; }
+    const h = await hashPwd(pwd);
+    const { data, error } = await cloud.database.from('ds_users').update({ pwd_hash: h }).eq('name', name).select();
+    if (error) return line($('op-line'), '重置失败：' + error.message);
+    line($('op-line'), (!data || !data.length) ? '未生效：账号不存在' : '已重置「' + name + '」的密码', true);
+  }
+  async function delUser(name) {
+    if (!confirm('确定删除账号「' + name + '」？其云端进度将一并删除，不可恢复。')) return;
+    const { data, error } = await cloud.database.from('ds_users').delete().eq('name', name).select();
+    if (error) return line($('op-line'), '删除失败：' + error.message);
+    line($('op-line'), (!data || !data.length) ? '未生效：账号不存在' : '已删除「' + name + '」', true);
+    loadUsers();
   }
 
   /* ---------- 绑定 ---------- */
   $('btn-admin-login').addEventListener('click', adminLogin);
   $('ad-pwd').addEventListener('keydown', e => { if (e.key === 'Enter') adminLogin(); });
   $('btn-logout').addEventListener('click', logout);
-  $('btn-yen-delta').addEventListener('click', () => grantDelta(Math.round(Number($('yen-delta').value))));
-  $('btn-yen-set').addEventListener('click', () => setYen(Math.round(Number($('yen-set').value))));
-  document.querySelectorAll('[data-yen]').forEach(b =>
-    b.addEventListener('click', () => grantDelta(+b.dataset.yen)));
-  $('btn-grant').addEventListener('click', () => {
-    const id = Math.round(Number($('card-id').value));
-    if (!id) return line('请输入卡牌编号', false);
-    const ok = META.grantCard(id);
-    refreshStats();
-    line(ok ? '已授予卡牌 #' + id : '编号 #' + id + ' 不在卡池中', ok);
+  $('btn-add').addEventListener('click', addUser);
+  $('btn-refresh').addEventListener('click', () => { page = 1; loadUsers(); });
+  $('q-name').addEventListener('keydown', e => { if (e.key === 'Enter') { q = e.target.value.trim(); page = 1; loadUsers(); } });
+  $('tb').addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    if (b.dataset.act === 'view') viewUser(b.dataset.name);
+    if (b.dataset.act === 'yen') adjustYen(b.dataset.name);
+    if (b.dataset.act === 'reset') resetPwd(b.dataset.name);
+    if (b.dataset.act === 'del') delUser(b.dataset.name);
   });
-  $('char-chips').addEventListener('click', e => {
-    const b = e.target.closest('button[data-char]');
-    if (!b || b.disabled) return;
-    const who = b.dataset.char;
-    const ok = META.unlockChar(who);
-    refreshStats(); renderChars();
-    line(ok ? '已解锁「' + CHAR_NAMES[who] + '」并发放专属卡组' : '该决斗者已解锁', ok);
-  });
-  $('btn-export').addEventListener('click', exportSave);
-  $('btn-import').addEventListener('click', () => $('import-file').click());
-  $('import-file').addEventListener('change', e => { if (e.target.files[0]) importSave(e.target.files[0]); e.target.value = ''; });
-  $('btn-pwd').addEventListener('click', changePwd);
-  $('btn-reset').addEventListener('click', resetSave);
 
   /* ---------- 启动 ---------- */
-  if (sessionStorage.getItem(SESSION_KEY)) enterPanel();
+  try { initCloud(); } catch (e) { line($('ad-line'), '云服务初始化失败：' + e.message); }
+  if (sessionStorage.getItem(KEY)) { $('ad-who').textContent = sessionStorage.getItem(KEY); enterPanel(); }
 })();
 </script>
 </body>

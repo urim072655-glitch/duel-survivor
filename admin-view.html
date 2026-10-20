@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>决斗幸存者 · 卡牌收集查看</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%rect width='32' height='32' rx='6' fill='%23c9a06a'/%3Ctext x='16' y='23' font-size='18' text-anchor='middle' fill='%231a1206' font-family='serif'%3E遊%3C/text%3E%3C/svg%3E" />
+<title>决斗幸存者 · 玩家数据查看</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23c9a06a'/%3E%3Ctext x='16' y='23' font-size='18' text-anchor='middle' fill='%231a1206' font-family='serif'%3E遊%3C/text%3E%3C/svg%3E" />
 <style>
 :root{--void:#08060f;--panel:#120d1e;--gold:#c9a34e;--gold-l:#f3e0a8;--gold-d:#7a5f22;
   --ink:#f2ecff;--ink-dim:#a89fc0;--red:#e0384a;
@@ -33,26 +33,31 @@ h2.sec{font-size:12px;font-weight:400;letter-spacing:.3em;color:var(--gold);bord
 .kv span{color:var(--ink-dim);font-size:11px;letter-spacing:.14em}
 .kv b{color:var(--gold-l);font-weight:600}
 .tag{font-size:10px;padding:2px 8px;border-radius:999px;border:1px solid rgba(201,163,78,.4);color:var(--gold-l)}
+.tag.admin{border-color:rgba(224,56,74,.55);color:#ffb3b3}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{font-size:12px;padding:5px 12px;border-radius:999px;border:1px solid rgba(201,163,78,.3);background:rgba(201,163,78,.06)}
 .chip.dim{opacity:.4}
 /* 卡牌网格 */
 .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:10px;max-height:420px;overflow-y:auto;padding-right:4px}
 .citem{text-align:center}
-.citem img{width:100%;border-radius:5px;border:1px solid rgba(201,163,78,.35);display:block;background:#0a0614}
+.citem img{width:100%;aspect-ratio:59/86;object-fit:cover;border-radius:5px;border:1px solid rgba(201,163,78,.35);display:block;background:#0a0614}
+.citem .cph{width:100%;aspect-ratio:59/86;border-radius:5px;border:1px dashed rgba(201,163,78,.45);
+  display:flex;align-items:center;justify-content:center;text-align:center;padding:4px;
+  background:linear-gradient(160deg,#1b1230,#0b0716);color:#c9a34e;font-size:11px;line-height:1.3;box-sizing:border-box}
 .citem .cn{font-size:10px;color:var(--ink);margin-top:5px;line-height:1.35;height:27px;overflow:hidden;word-break:break-all}
 .citem .cq{font-size:10px;color:var(--gold)}
 .empty{text-align:center;color:var(--ink-dim);padding:26px 0;letter-spacing:.2em;font-size:12px}
 .line{min-height:18px;font-size:13px;letter-spacing:.06em;text-align:center}
 .line.bad{color:#ff8a8a}
 .denied{text-align:center;padding:40px 0;display:flex;flex-direction:column;gap:16px;align-items:center}
+.loading{text-align:center;color:var(--ink-dim);letter-spacing:.24em;font-size:13px;padding:60px 0}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="kicker">DUEL SURVIVOR · ADMIN VIEW</div>
-  <h1>卡 牌 收 集 查 看</h1>
-  <div class="sub">只读详情页 · 本地存档 · 决斗幸存者</div>
+  <h1>玩 家 数 据 查 看</h1>
+  <div class="sub">只读详情页 · 管理员后台分页 · 决斗幸存者</div>
 
   <div class="card" id="denied-card">
     <div class="denied">
@@ -64,12 +69,17 @@ h2.sec{font-size:12px;font-weight:400;letter-spacing:.3em;color:var(--gold);bord
   <div id="content" class="hidden">
     <div class="card">
       <div class="top">
-        <div class="who">本地存档 · <b id="v-yen">¥0</b></div>
+        <div class="who">决斗者：<b id="v-name">—</b> <span id="v-role" class="tag">玩家</span></div>
         <div style="display:flex;gap:10px">
           <button class="btn" id="btn-reload">刷新</button>
           <a class="btn" href="admin.html">← 返回后台</a>
         </div>
       </div>
+      <h2 class="sec">基 本 信 息</h2>
+      <div class="kv" id="v-basic"></div>
+    </div>
+
+    <div class="card">
       <h2 class="sec">决 斗 进 度</h2>
       <div class="kv" id="v-progress"></div>
     </div>
@@ -83,15 +93,22 @@ h2.sec{font-size:12px;font-weight:400;letter-spacing:.3em;color:var(--gold);bord
     <div class="card">
       <h2 class="sec">卡 牌 收 集（<span id="v-cnt">0</span> 种）</h2>
       <div class="cgrid" id="v-cards"></div>
-      <div class="empty hidden" id="v-cards-empty">尚未收集任何卡牌</div>
+      <div class="empty hidden" id="v-cards-empty">该玩家尚未收集卡牌</div>
     </div>
   </div>
 
   <div class="line" id="v-line"></div>
+  <div class="loading hidden" id="v-loading">加 载 中 …</div>
 </div>
 
-<script src="data/cards.js"></script>
-<script src="js/meta.js"></script>
+<script>
+window.DS_PUBLIC_CONFIG = {
+  endpoint: "https://duel-survivor.app.workbuddy.host",
+  oauthRelayBaseUrl: "https://www.workbuddy.cn/v2/as/genie-baas/oauth",
+  publishableKey: "wbpk_sxEJaFtLNsUkXDTqQEj7X4_VTZCjWgwLQuG2hJH3wATLps0KH2K5viY"
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
 <script>
 (function () {
   'use strict';
@@ -99,20 +116,87 @@ h2.sec{font-size:12px;font-weight:400;letter-spacing:.3em;color:var(--gold);bord
   const KEY = 'ds_admin_session_v1';
   const LEVEL_NAMES = { temple: '王家神殿', kingdom: '决斗者王国', city: '战斗都市' };
   const CHAR_NAMES = { yugi: '武藤游戏', joey: '城之内克也', kaiba: '海马濑人' };
+  const ACH_NAMES = {
+    first_win: '初胜', kill100: '百人斩', kill500: '五百人斩', win_joey: '击败城之内',
+    win_kaiba: '击败海马', win_god: '战胜三幻神', exodia: '封印解除', pack10: '开包新手'
+  };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const kv = (label, val) => '<div><span>' + label + '</span><b>' + val + '</b></div>';
-  let names = {};
+  const fmtTime = t => t ? new Date(t).toLocaleString('zh-CN', { hour12: false }) : '—';
+  const safeParse = s => { try { return typeof s === 'string' ? JSON.parse(s) : (s || {}); } catch (e) { return {}; } };
+  let names = {};   // 卡 id → 中文名
+  const LOCAL_IMGS = new Set();   // v0.4.2d：本地实装卡图 id（避免大量 404）
 
-  function loadNames() {
-    return fetch('data/cn_names.json').then(r => r.json()).then(j => { names = j || {}; }).catch(() => { names = {}; });
+  /* 本地有图走本地，没有就回落官方 CDN —— 与游戏内 __cardImg 判定一致 */
+  function imgSrc(id) {
+    return LOCAL_IMGS.has(+id)
+      ? 'data/cardimg/' + id + '.jpg'
+      : 'https://images.ygoprodeck.com/images/cards/' + id + '.jpg';
+  }
+  /* 兜底链：本地 404 → CDN → 占位块（绝不出现裂图图标） */
+  window.__cimgErr = function (el) {
+    const id = el.dataset.id;
+    if (!el.dataset.fb) {
+      el.dataset.fb = '1';
+      el.src = 'https://images.ygoprodeck.com/images/cards/' + id + '.jpg';
+      return;
+    }
+    const ph = document.createElement('div');
+    ph.className = 'cph';
+    ph.textContent = (el.alt || ('卡 #' + id)).slice(0, 6);
+    if (el.parentNode) { el.parentNode.insertBefore(ph, el); el.remove(); }
+  };
+
+  function kv(label, val) { return '<div><span>' + label + '</span><b>' + val + '</b></div>'; }
+
+  async function loadNames() {
+    try {
+      const r = await fetch('data/cn_names.json');
+      names = await r.json();
+    } catch (e) { names = {}; }
+    try {
+      const r2 = await fetch('data/cardimg/index.json');
+      const arr = await r2.json();
+      (arr || []).forEach(x => LOCAL_IMGS.add(+x));
+    } catch (e) { /* 没索引就当全都没有，走 CDN */ }
   }
 
-  function render() {
-    const d = META.save;
+  async function loadUser() {
+    const name = new URLSearchParams(location.search).get('name');
+    if (!name) { $('v-line').textContent = 'URL 缺少 ?name= 参数'; $('v-line').className = 'line bad'; return; }
+    $('v-loading').classList.remove('hidden');
+    try {
+      let cloud = WorkBuddyCloud.createWorkBuddyCloud({
+        endpoint: window.DS_PUBLIC_CONFIG.endpoint,
+        oauthRelayBaseUrl: window.DS_PUBLIC_CONFIG.oauthRelayBaseUrl,
+        publishableKey: window.DS_PUBLIC_CONFIG.publishableKey
+      });
+      const { data: rows, error } = await cloud.database.from('ds_users')
+        .select('*').eq('name', name).maybeSingle();
+      if (error) throw error;
+      $('v-loading').classList.add('hidden');
+      if (!rows) { $('v-line').textContent = '账号不存在：' + name; $('v-line').className = 'line bad'; return; }
+      render(rows);
+    } catch (e) {
+      $('v-loading').classList.add('hidden');
+      $('v-line').textContent = '加载失败：' + e.message;
+      $('v-line').className = 'line bad';
+    }
+  }
+
+  function render(r) {
+    const d = safeParse(r.data);
     $('denied-card').classList.add('hidden');
     $('content').classList.remove('hidden');
     $('v-line').textContent = '';
-    $('v-yen').textContent = '¥ ' + (d.yen || 0).toLocaleString();
+    $('v-name').textContent = r.name;
+    $('v-role').textContent = r.is_admin ? '管理员' : '玩家';
+    $('v-role').className = 'tag' + (r.is_admin ? ' admin' : '');
+    /* 基本信息 */
+    $('v-basic').innerHTML =
+      kv('账号 ID', r.id) +
+      kv('持有日元', '¥ ' + (d.yen != null ? (+d.yen).toLocaleString() : '—')) +
+      kv('注册时间', fmtTime(r.created_at)) +
+      kv('最近登录', fmtTime(r.last_login));
     /* 进度 */
     const lvls = Array.isArray(d.levels) ? d.levels.map(l => LEVEL_NAMES[l] || l) : [];
     $('v-progress').innerHTML =
@@ -120,8 +204,7 @@ h2.sec{font-size:12px;font-weight:400;letter-spacing:.3em;color:var(--gold);bord
       kv('总击败', d.totalKills || 0) +
       kv('开包次数', d.packsOpened || 0) +
       kv('解锁关卡', lvls.length ? lvls.join(' · ') : '—') +
-      kv('最近决斗者', CHAR_NAMES[d.lastChar] || d.lastChar || '—') +
-      kv('建档时间', d.created ? new Date(d.created).toLocaleString('zh-CN', { hour12: false }) : '—');
+      kv('最近决斗者', CHAR_NAMES[d.lastChar] || d.lastChar || '—');
     /* 解锁与成就 */
     const unl = d.unlocked || {};
     $('v-unlock').innerHTML = Object.keys(CHAR_NAMES).map(w =>
@@ -129,7 +212,7 @@ h2.sec{font-size:12px;font-weight:400;letter-spacing:.3em;color:var(--gold);bord
     const ach = d.ach || {};
     const achKeys = Object.keys(ach).filter(k => ach[k]);
     $('v-ach').innerHTML = achKeys.length
-      ? achKeys.map(k => '<span class="chip">' + esc((META.ACH.find(a => a.k === k) || {}).n || k) + '</span>').join('')
+      ? achKeys.map(k => '<span class="chip">' + esc(ACH_NAMES[k] || k) + '</span>').join('')
       : '<span class="chip dim">暂无成就</span>';
     /* 卡牌收集 */
     const owned = d.owned || {};
@@ -138,7 +221,7 @@ h2.sec{font-size:12px;font-weight:400;letter-spacing:.3em;color:var(--gold);bord
     $('v-cards-empty').classList.toggle('hidden', ids.length > 0);
     $('v-cards').innerHTML = ids.map(id =>
       '<div class="citem">' +
-      '<img loading="lazy" src="data/cardimg/' + id + '.jpg" alt="' + esc(names[id] || id) + '" onerror="this.style.opacity=.25">' +
+      '<img loading="lazy" data-id="' + id + '" src="' + imgSrc(id) + '" alt="' + esc(names[id] || ('卡 #' + id)) + '" onerror="window.__cimgErr(this)">' +
       '<div class="cn">' + esc(names[id] || ('卡 #' + id)) + '</div>' +
       '<div class="cq">×' + (+owned[id] || 1) + '</div></div>').join('');
   }
@@ -147,8 +230,10 @@ h2.sec{font-size:12px;font-weight:400;letter-spacing:.3em;color:var(--gold);bord
   if (!sessionStorage.getItem(KEY)) {
     /* 未登录：停留提示页 */
   } else {
-    $('btn-reload').addEventListener('click', () => { META.load(); render(); });
-    loadNames().then(render);
+    $('denied-card').classList.add('hidden');
+    $('v-loading').classList.remove('hidden');
+    Promise.resolve(loadNames()).then(loadUser);
+    $('btn-reload').addEventListener('click', () => { $('v-loading').classList.remove('hidden'); loadUser(); });
   }
 })();
 </script>

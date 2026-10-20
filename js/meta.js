@@ -102,8 +102,12 @@
     return S;
   }
 
-  function persist() {
+  function persistLocal() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { }
+  }
+
+  function persist() {
+    persistLocal();
     /* 登录状态下自动云同步进度（DSCLOUD 内部防抖） */
     if (window.DSCLOUD) { try { DSCLOUD.pushSave(S); } catch (e) { } }
   }
@@ -642,7 +646,7 @@
 
   /* ---------------- 导出 ---------------- */
   global.META = {
-    load, persist, addYen, spend, refreshWallet, applyCloudSave,
+    load, persist, persistLocal, addYen, spend, refreshWallet, applyCloudSave,
     deckFor, extraFor, starterFor, setStarter,
     unlock, achCount, ACH,
     openPack, buyDigi, openDigiView, digiPack, renderShop, renderDeck, renderAch, bindDeckTabs,
@@ -653,17 +657,6 @@
   };
 
   load();
-
-  /* v0.4.3：监听其他标签页（管理员端 admin.html）对存档的修改，实时同步到本页 */
-  window.addEventListener('storage', e => {
-    if (e.key !== KEY || !e.newValue) return;
-    try {
-      S = JSON.parse(e.newValue);
-      load();                      // 走一遍字段补齐/兜底
-      refreshWallet();
-      if (global.__DS && __DS.updateBestLine) __DS.updateBestLine();
-    } catch (err) { /* 解析失败则保留当前进度 */ }
-  });
 
   /* v0.3.5：绑定卡组编辑器决斗者切换标签（此前漏调用导致标签不可点击） */
   function initMetaUI() {
