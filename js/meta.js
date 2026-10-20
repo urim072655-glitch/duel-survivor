@@ -654,6 +654,17 @@
 
   load();
 
+  /* v0.4.3：监听其他标签页（管理员端 admin.html）对存档的修改，实时同步到本页 */
+  window.addEventListener('storage', e => {
+    if (e.key !== KEY || !e.newValue) return;
+    try {
+      S = JSON.parse(e.newValue);
+      load();                      // 走一遍字段补齐/兜底
+      refreshWallet();
+      if (global.__DS && __DS.updateBestLine) __DS.updateBestLine();
+    } catch (err) { /* 解析失败则保留当前进度 */ }
+  });
+
   /* v0.3.5：绑定卡组编辑器决斗者切换标签（此前漏调用导致标签不可点击） */
   function initMetaUI() {
     try { bindDeckTabs(); } catch (e) { }

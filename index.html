@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23c9a06a'/%3E%3Ctext x='16' y='23' font-size='18' text-anchor='middle' fill='%231a1206' font-family='serif'%3E遊%3C/text%3E%3C/svg%3E" />
 <title>决斗幸存者 · DUEL SURVIVOR</title>
-<link rel="stylesheet" href="css/style.css?v=042b" />
+<link rel="stylesheet" href="css/style.css?v=043" />
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -108,31 +108,9 @@
 <div id="toast"></div>
 <div id="card-detail"></div>
 
-<!-- ========== 账号（登录 / 注册） ========== -->
-<div class="screen dim hidden" id="s-auth">
-  <div class="panel auth-panel">
-    <div class="sel-kicker">DUEL SURVIVOR · ACCOUNT</div>
-    <h2 class="panel-title">决 斗 者 登 录</h2>
-    <div class="auth-tabs">
-      <button id="auth-tab-login" class="auth-tab on">登 录</button>
-      <button id="auth-tab-reg" class="auth-tab">注 册</button>
-    </div>
-    <div class="auth-form">
-      <label>姓名（唯一，用于登录）<input id="auth-name" type="text" maxlength="16" placeholder="输入姓名" autocomplete="username"></label>
-      <label>密码<input id="auth-pwd" type="password" placeholder="至少 4 位" autocomplete="current-password"></label>
-      <div class="auth-line" id="auth-ok-line"></div>
-      <button class="btn btn-primary" id="auth-btn-login">登录游戏</button>
-      <button class="btn btn-primary hidden" id="auth-btn-reg">注册并进入</button>
-      <button class="btn btn-ghost small hidden" id="auth-btn-offline">离线体验（进度仅存本机）</button>
-      <a class="auth-admin-link" href="admin.html" target="_blank">管理员后台 →</a>
-    </div>
-  </div>
-</div>
-
 <!-- ========== 标题 ========== -->
 <div class="screen" id="s-title">
-  <div class="ver-badge" id="ver-badge"><i></i>v0.4.2b</div>
-  <div class="auth-user-chip" id="auth-user-chip"></div>
+  <div class="ver-badge" id="ver-badge"><i></i>v0.4.3</div>
   <div class="title-wrap">
     <div class="title-kicker">游戏王 · 生存对决</div>
     <h1 class="logo">决斗<span>幸存者</span></h1>
@@ -483,7 +461,7 @@
 
 <script src="js/three.min.js"></script>
 <script src="js/card3d.js"></script>
-<script src="js/models3d.js?v=042b"></script>
+<script src="js/models3d.js?v=043"></script>
 <script src="data/cards.js"></script>
 <script src="data/cards_ext.js"></script>
 <script>
@@ -493,17 +471,9 @@ window.__cardImg = function (id) {
   for (var i = 0; i < local.length; i++) if (+local[i] === +id) return "data/cardimg/" + id + ".jpg";
   return "https://images.ygoprodeck.com/images/cards/" + id + ".jpg";
 };
-/* 云服务公开配置（仅公开凭据：endpoint + publishableKey，无任何私密密钥） */
-window.DS_PUBLIC_CONFIG = {
-  endpoint: "https://duel-survivor.app.workbuddy.host",
-  oauthRelayBaseUrl: "https://www.workbuddy.cn/v2/as/genie-baas/oauth",
-  publishableKey: "wbpk_sxEJaFtLNsUkXDTqQEj7X4_VTZCjWgwLQuG2hJH3wATLps0KH2K5viY"
-};
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
-<script src="js/cloud.js?v=042b"></script>
-<script src="js/meta.js?v=042b"></script>
-<script src="js/game.js?v=042b"></script>
-<script src="js/touch.js?v=042b"></script>
+<script src="js/meta.js?v=043"></script>
+<script src="js/game.js?v=043"></script>
+<script src="js/touch.js?v=043"></script>
 </body>
 </html>
