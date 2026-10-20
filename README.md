@@ -26,6 +26,7 @@
 - 3D 场景：角色、怪兽、Boss（无名的法老王）、金字塔竞技场、粒子与阴影
 - 怪兽自动索敌攻击，玩家专注走位与卡组决策
 - PC（键鼠）与触屏双方案，虚拟摇杆 + 自适应画质
+- **完全离线**：不依赖任何服务器，进度存于本机浏览器
 
 ## 本地运行
 
@@ -50,7 +51,9 @@ npx serve .
 ## 目录结构
 
 ```
-├── index.html        # 入口
+├── index.html        # 用户端入口（纯游戏，无登录、无管理入口）
+├── admin.html        # 管理端（本地存档管理：发放日元 / 授予卡牌 / 解锁决斗者 / 存档维护）
+├── admin-view.html   # 管理端 · 卡牌收集查看
 ├── admin.html        # 管理页
 ├── admin-view.html   # 管理查看页
 ├── css/              # 样式
@@ -58,6 +61,23 @@ npx serve .
 └── data/             # 卡组与配置数据
 ```
 
+## 用户端与管理端
+
+两个入口互相独立，共用同一份本机存档（localStorage）：
+
+| | 入口 | 用途 |
+|---|---|---|
+| 用户端 | `index.html` | 玩游戏，无登录页、无管理入口，打开即玩 |
+| 管理端 | `admin.html` | 管理本机存档，默认密码 `admin`（进入后可修改） |
+
+管理端能力：**发放日元**（数额正负皆可，另有快捷档 +100/+1,000/+5,000/+10,000/-1,000，或设为指定值）、
+授予卡牌、解锁决斗者、存档导出/导入/重置、修改管理密码、查看卡牌收集。
+
+发放日元后，若游戏正开在另一个标签页，钱包会通过 `storage` 事件**实时同步**，无需刷新。
+
+> 存档存在浏览器 localStorage 中，换浏览器 / 换域名各存一份，跨环境迁移用管理端的「导出 / 导入存档」。
+
 ## 在线游玩
 
-https://duel-survivor.app.workbuddy.host/?sharecode=67N6NH4NTQ
+- GitHub Pages（v0.4.3）：https://urim072655-glitch.github.io/duel-survivor/
+- WorkBuddy 托管（旧版 v0.4.2b）：https://duel-survivor.app.workbuddy.host/?sharecode=67N6NH4NTQ
