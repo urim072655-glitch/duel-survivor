@@ -245,6 +245,9 @@ window.DS_PUBLIC_CONFIG = {
       const cur = (typeof d.yen === 'number') ? d.yen : 0;
       const next = Math.max(0, cur + delta);
       d.yen = next;
+      /* v0.4.2d：发放版本号 +1，玩家端据此判断“这是新发放”，不会被本地存档覆盖 */
+      d.yenSeq = (typeof d.yenSeq === 'number' ? d.yenSeq : 0) + 1;
+      d.yenGrantedAt = Date.now();
       const { error: e2 } = await cloud.database.from('ds_users').update({ data: d }).eq('name', name);
       if (e2) return line($('op-line'), '更新失败：' + e2.message);
       line($('op-line'), '已调整「' + name + '」日元：¥' + cur.toLocaleString() + ' → ¥' + next.toLocaleString() + '（' + (delta > 0 ? '+' : '') + delta.toLocaleString() + '）', true);
@@ -257,7 +260,7 @@ window.DS_PUBLIC_CONFIG = {
     if (pwd.length < 4) return line($('op-line'), '密码至少 4 位');
     try {
       const h = await hashPwd(pwd);
-      const { error } = await cloud.database.from('ds_users').insert({ name, pwd_hash: h, is_admin: false, data: { yen: 5000 } });
+      const { error } = await cloud.database.from('ds_users').insert({ name, pwd_hash: h, is_admin: false, data: { yen: 5000, yenSeq: 0 } });
       if (error) { line($('op-line'), (error.code === '23505' || /23505|duplicate|unique constraint/i.test(error.message || '')) ? '该姓名已存在（姓名不可重复）' : '添加失败：' + error.message); return; }
       line($('op-line'), '已添加账号「' + name + '」', true);
       $('nu-name').value = ''; $('nu-pwd').value = '';

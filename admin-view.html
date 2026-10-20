@@ -40,7 +40,10 @@ h2.sec{font-size:12px;font-weight:400;letter-spacing:.3em;color:var(--gold);bord
 /* 卡牌网格 */
 .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:10px;max-height:420px;overflow-y:auto;padding-right:4px}
 .citem{text-align:center}
-.citem img{width:100%;border-radius:5px;border:1px solid rgba(201,163,78,.35);display:block;background:#0a0614}
+.citem img{width:100%;aspect-ratio:59/86;object-fit:cover;border-radius:5px;border:1px solid rgba(201,163,78,.35);display:block;background:#0a0614}
+.citem .cph{width:100%;aspect-ratio:59/86;border-radius:5px;border:1px dashed rgba(201,163,78,.45);
+  display:flex;align-items:center;justify-content:center;text-align:center;padding:4px;
+  background:linear-gradient(160deg,#1b1230,#0b0716);color:#c9a34e;font-size:11px;line-height:1.3;box-sizing:border-box}
 .citem .cn{font-size:10px;color:var(--ink);margin-top:5px;line-height:1.35;height:27px;overflow:hidden;word-break:break-all}
 .citem .cq{font-size:10px;color:var(--gold)}
 .empty{text-align:center;color:var(--ink-dim);padding:26px 0;letter-spacing:.2em;font-size:12px}
@@ -121,6 +124,27 @@ window.DS_PUBLIC_CONFIG = {
   const fmtTime = t => t ? new Date(t).toLocaleString('zh-CN', { hour12: false }) : '—';
   const safeParse = s => { try { return typeof s === 'string' ? JSON.parse(s) : (s || {}); } catch (e) { return {}; } };
   let names = {};   // 卡 id → 中文名
+  const LOCAL_IMGS = new Set();   // v0.4.2d：本地实装卡图 id（避免大量 404）
+
+  /* 本地有图走本地，没有就回落官方 CDN —— 与游戏内 __cardImg 判定一致 */
+  function imgSrc(id) {
+    return LOCAL_IMGS.has(+id)
+      ? 'data/cardimg/' + id + '.jpg'
+      : 'https://images.ygoprodeck.com/images/cards/' + id + '.jpg';
+  }
+  /* 兜底链：本地 404 → CDN → 占位块（绝不出现裂图图标） */
+  window.__cimgErr = function (el) {
+    const id = el.dataset.id;
+    if (!el.dataset.fb) {
+      el.dataset.fb = '1';
+      el.src = 'https://images.ygoprodeck.com/images/cards/' + id + '.jpg';
+      return;
+    }
+    const ph = document.createElement('div');
+    ph.className = 'cph';
+    ph.textContent = (el.alt || ('卡 #' + id)).slice(0, 6);
+    if (el.parentNode) { el.parentNode.insertBefore(ph, el); el.remove(); }
+  };
 
   function kv(label, val) { return '<div><span>' + label + '</span><b>' + val + '</b></div>'; }
 
@@ -129,6 +153,11 @@ window.DS_PUBLIC_CONFIG = {
       const r = await fetch('data/cn_names.json');
       names = await r.json();
     } catch (e) { names = {}; }
+    try {
+      const r2 = await fetch('data/cardimg/index.json');
+      const arr = await r2.json();
+      (arr || []).forEach(x => LOCAL_IMGS.add(+x));
+    } catch (e) { /* 没索引就当全都没有，走 CDN */ }
   }
 
   async function loadUser() {
@@ -192,7 +221,7 @@ window.DS_PUBLIC_CONFIG = {
     $('v-cards-empty').classList.toggle('hidden', ids.length > 0);
     $('v-cards').innerHTML = ids.map(id =>
       '<div class="citem">' +
-      '<img loading="lazy" src="data/cardimg/' + id + '.jpg" alt="' + esc(names[id] || id) + '" onerror="this.style.opacity=.25">' +
+      '<img loading="lazy" data-id="' + id + '" src="' + imgSrc(id) + '" alt="' + esc(names[id] || ('卡 #' + id)) + '" onerror="window.__cimgErr(this)">' +
       '<div class="cn">' + esc(names[id] || ('卡 #' + id)) + '</div>' +
       '<div class="cq">×' + (+owned[id] || 1) + '</div></div>').join('');
   }

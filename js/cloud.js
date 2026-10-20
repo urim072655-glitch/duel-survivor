@@ -107,15 +107,46 @@ window.DSCLOUD = (function () {
   };
 
   /* ---------- 进度云同步 ---------- */
+  /* v0.4.2d：管理员发放以 yenSeq 递增为凭，本地推送前必须合并，否则会把发放覆盖掉 */
+  function adoptRemoteYen(remote, obj) {
+    if (!remote || typeof remote.yen !== 'number') return false;
+    const rSeq = (typeof remote.yenSeq === 'number') ? remote.yenSeq : 0;
+    const lSeq = (typeof obj.yenSeq === 'number') ? obj.yenSeq : 0;
+    if (rSeq <= lSeq) return false;
+    /* 按“云端相对上次同步的净变化”合并，避免吞掉本地刚赚到的部分 */
+    const base = (typeof obj.yenPushed === 'number') ? obj.yenPushed : null;
+    obj.yen = (base === null) ? remote.yen : Math.max(0, remote.yen + ((obj.yen || 0) - base));
+    obj.yenSeq = rSeq;
+    obj.yenPushed = remote.yen;
+    return true;
+  }
+
   function pushSave(saveObj) {
     if (!session || session.name === '__offline__' || !sdkOk) return;
     lastPushQueuedAt = Date.now();              // v0.3.5：标记本地存档待推送
-    const payload = JSON.stringify(saveObj);
+    let payload = JSON.stringify(saveObj);
     if (pushTimer) clearTimeout(pushTimer);
     pushTimer = setTimeout(async () => {
       if (pushBusy) { pushPending = payload; return; }
       pushBusy = true;
       try {
+        /* 写前先读云端：若管理员在此期间发放过（yenSeq 更大），先采纳云端余额再落库 */
+        const { data: rows } = await db().from('ds_users').select('data').eq('name', session.name).limit(1);
+        if (rows && rows.length) {
+          const target = safeParseC(payload);
+          if (adoptRemoteYen(safeParseC(rows[0].data), target)) {
+            payload = JSON.stringify(target);
+            if (window.META && META.save) {
+              META.save.yen = target.yen;
+              META.save.yenSeq = target.yenSeq;
+              if (META.persistLocal) META.persistLocal();
+              META.refreshWallet();
+              cloudToast('管理员发放 ¥ ' + target.yen.toLocaleString() + ' · 已到账');
+            }
+          }
+        }
+        const out = safeParseC(payload);
+        if (typeof out.yen === 'number') { out.yenPushed = out.yen; payload = JSON.stringify(out); }
         await db().from('ds_users').update({ data: payload }).eq('name', session.name);
       } catch (e) { /* 静默：下次 persist 会再推 */ }
       pushBusy = false;
@@ -136,20 +167,36 @@ window.DSCLOUD = (function () {
   async function pullYen() {
     const dbg = r => { try { window.__pullYenDbg = { t: Date.now(), r: r, push: lastPushQueuedAt }; } catch (e) { } return false; };
     if (!session || session.name === '__offline__' || !sdkOk) return dbg('session');
-    /* 仅在标题界面且页面可见时拉取，避免覆盖战斗中的本地进度 */
+    /* 管理员发放（带 yenSeq）后台标签页也要拉，回来就能看到；旧逻辑只在可见的标题页生效 */
+    /* 标题界面：允许“按数值兜底”的旧逻辑；战斗中只接受带 yenSeq 的管理员发放，
+       避免用旧云端数值覆盖战斗中刚赚到的本地进度 */
     const title = $('s-title'), hud = $('hud');
-    if (!title || title.classList.contains('hidden')) return dbg('title');
-    if (!hud || !hud.classList.contains('hidden')) return dbg('hud');
-    if (document.visibilityState !== 'visible') return dbg('visibility');
-    if (Date.now() - lastPushQueuedAt < 4000) return dbg('push-window');   // 本地存档尚在推送窗口，暂不拉取
+    const onTitle = !!title && !title.classList.contains('hidden') && !(hud && !hud.classList.contains('hidden'));
     try {
       const { data: rows, error } = await db().from('ds_users').select('data').eq('name', session.name).limit(1);
       if (error || !rows || !rows.length) return dbg('query:' + (error ? error.message : 'empty'));
       const obj = safeParseC(rows[0].data);
       if (typeof obj.yen !== 'number' || !window.META || !META.save) return dbg('yen-type');
       const cur = META.save.yen || 0;
+      const rSeq = (typeof obj.yenSeq === 'number') ? obj.yenSeq : 0;
+      const lSeq = (typeof META.save.yenSeq === 'number') ? META.save.yenSeq : 0;
+      /* 1) 管理员发放（带版本号）：任何界面都立即到账 */
+      if (rSeq > lSeq) {
+        META.save.yen = obj.yen;
+        META.save.yenSeq = rSeq;
+        META.save.yenPushed = obj.yen;
+        if (META.persistLocal) META.persistLocal();
+        META.refreshWallet();
+        cloudToast('管理员发放已到账：¥ ' + obj.yen.toLocaleString());
+        return true;
+      }
+      /* 2) 旧数据兜底：仅标题界面按数值同步 */
+      if (!onTitle || document.visibilityState !== 'visible') return dbg('not-title');
+      if (Date.now() - lastPushQueuedAt < 4000) return dbg('push-window');
       if (obj.yen === cur) return dbg('same:' + obj.yen);
       META.save.yen = obj.yen;
+      META.save.yenPushed = obj.yen;
+      if (typeof obj.yenSeq === 'number') META.save.yenSeq = obj.yenSeq;
       META.persist();
       META.refreshWallet();
       cloudToast('云端余额已同步：¥ ' + obj.yen.toLocaleString());

@@ -102,8 +102,12 @@
     return S;
   }
 
-  function persist() {
+  function persistLocal() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { }
+  }
+
+  function persist() {
+    persistLocal();
     /* 登录状态下自动云同步进度（DSCLOUD 内部防抖） */
     if (window.DSCLOUD) { try { DSCLOUD.pushSave(S); } catch (e) { } }
   }
@@ -642,7 +646,7 @@
 
   /* ---------------- 导出 ---------------- */
   global.META = {
-    load, persist, addYen, spend, refreshWallet, applyCloudSave,
+    load, persist, persistLocal, addYen, spend, refreshWallet, applyCloudSave,
     deckFor, extraFor, starterFor, setStarter,
     unlock, achCount, ACH,
     openPack, buyDigi, openDigiView, digiPack, renderShop, renderDeck, renderAch, bindDeckTabs,
