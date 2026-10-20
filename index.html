@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#08060f" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23c9a06a'/%3E%3Ctext x='16' y='23' font-size='18' text-anchor='middle' fill='%231a1206' font-family='serif'%3E遊%3C/text%3E%3C/svg%3E" />
+<title>决斗幸存者 · DUEL SURVIVOR</title>
+<link rel="stylesheet" href="css/style.css?v=042b" />
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="vignette"></div>
+<div id="flash"></div>
+<!-- v22：指针锁定期间显示的屏幕中心准星（此时系统光标已隐藏，视觉焦点固定在正中） -->
+<div id="aim-dot"></div>
+<div id="lock-prompt"><b>点击画面</b>锁定战斗视角 · 指针将固定在屏幕中心</div>
+<div id="cursor-hint">按 <b>ESC</b> 可释放指针（自动暂停）</div>
+
+<!-- ========== HUD ========== -->
+<div id="hud" class="hidden">
+  <div class="hud-tl">
+    <div class="portrait"><span id="portrait-glyph">遊</span></div>
+    <div class="pl-info">
+      <div class="pl-name"><span id="pl-name">武藤游戏</span><em id="pl-title">千年积木的持有者</em></div>
+      <div class="lp-track">
+        <div class="lp-fill" id="lp-fill"></div>
+        <span class="lp-text"><b id="lp-num">8000</b> / <span id="lp-max">8000</span> LP</span>
+      </div>
+      <div class="deck-info">牌组 <b id="deck-left">40</b> · 额外 <b id="extra-left">0</b></div>
+    </div>
+  </div>
+
+  <div class="hud-top">
+    <div class="timer" id="timer">00:00</div>
+    <div class="timer-sub" id="timer-sub">生存至 08:00</div>
+    <div class="boss-wrap hidden" id="boss-wrap">
+      <div class="boss-name"><span id="boss-name">欧贝利斯克的巨神兵</span><em class="boss-phase hidden" id="boss-phase"></em></div>
+      <div class="boss-track"><div class="boss-fill" id="boss-fill"></div></div>
+      <div class="boss-hp" id="boss-hp"></div>
+    </div>
+  </div>
+
+  <div class="hud-tr">
+    <div class="stat"><b id="kill-count">0</b><span>击败</span></div>
+    <div class="stat"><b id="lv-count">1</b><span>等级</span></div>
+    <!-- v0.4.2：全屏 / 手牌按钮移入 HUD 右上角（仅触屏显示），彻底避免与手牌卡背重叠 -->
+    <button class="tbtn tb-full" id="tb-full" type="button" title="全屏"><b>全屏</b></button>
+    <button class="tbtn tb-hand" id="tb-hand" type="button" title="手牌"><b>手牌</b></button>
+    <button class="icon-btn" id="btn-pause" title="暂停 (ESC)">
+      <svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+    </button>
+  </div>
+
+  <div class="hud-field">
+    <div class="field-head">场上怪兽 <b id="field-count">0/5</b></div>
+    <div class="field-row" id="field-row"></div>
+    <div class="mag-head">XYZ 磁力 <b id="mag-count">0/3</b></div>
+    <div class="mag-row" id="mag-row"></div>
+  </div>
+
+  <div class="hud-br">
+    <button class="ult-btn" id="ult-btn">
+      <svg class="ring" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="46" class="ring-bg"></circle>
+        <circle cx="50" cy="50" r="46" class="ring-fg" id="ult-ring"></circle>
+      </svg>
+      <span class="ult-glyph" id="ult-glyph">魔</span>
+      <span class="ult-label" id="ult-label">F</span>
+    </button>
+  </div>
+
+  <div class="bgm-chip" id="bgm-chip">
+    <span class="bc-note">♪</span><b id="bgm-chip-name">千年アイテム</b><em>光宗信吉</em>
+  </div>
+
+  <div class="hand-wrap">
+    <div class="fx-chip" id="fx-chip"></div>
+    <div class="exodia-chip" id="exodia-chip"></div>
+    <div class="hand-meta">手牌 <b id="hand-count">0/7</b> · <span class="hm-key">R</span> 抽卡（剩 <b id="draw-left">0</b> 次）· <span class="hm-key">Shift+1-7</span> 弃牌（剩 <b id="mill-left">5</b> 次）· <span class="hm-key">1-7</span> 召唤</div>
+    <div class="hand-row" id="hand-row"></div>
+    <div class="hand-meta extra-meta">额外卡组 <b id="extra-count">0</b> · <span class="hm-key">Q</span> 查看卡组 · <span class="hm-key">E</span> 快捷召唤</div>
+    <div class="extra-row" id="extra-row" style="display:none"></div>
+  </div>
+
+  <!-- v0.4.0：手机端手牌卡背（点击展开手牌面板；仅 body.is-touch 显示，随 #hud 隐藏） -->
+  <button id="hand-back" type="button" title="查看手牌">
+    <i class="hbk-card"></i><b id="hand-back-n">0</b>
+  </button>
+
+  <div class="exp-wrap">
+    <div class="exp-fill" id="exp-fill"></div>
+    <span class="exp-text" id="exp-text">Lv.1</span>
+  </div>
+</div>
+
+<div id="dmglayer"></div>
+<div id="coin-fx">
+  <div class="coin-stage">
+    <div class="coin3d" id="coin-body">
+      <div class="coin-side heads">表</div>
+      <div class="coin-side tails">裏</div>
+    </div>
+  </div>
+  <div class="coin-res" id="coin-res">投掷硬币…</div>
+</div>
+<div id="toast"></div>
+<div id="card-detail"></div>
+
+<!-- ========== 账号（登录 / 注册） ========== -->
+<div class="screen dim hidden" id="s-auth">
+  <div class="panel auth-panel">
+    <div class="sel-kicker">DUEL SURVIVOR · ACCOUNT</div>
+    <h2 class="panel-title">决 斗 者 登 录</h2>
+    <div class="auth-tabs">
+      <button id="auth-tab-login" class="auth-tab on">登 录</button>
+      <button id="auth-tab-reg" class="auth-tab">注 册</button>
+    </div>
+    <div class="auth-form">
+      <label>姓名（唯一，用于登录）<input id="auth-name" type="text" maxlength="16" placeholder="输入姓名" autocomplete="username"></label>
+      <label>密码<input id="auth-pwd" type="password" placeholder="至少 4 位" autocomplete="current-password"></label>
+      <div class="auth-line" id="auth-ok-line"></div>
+      <button class="btn btn-primary" id="auth-btn-login">登录游戏</button>
+      <button class="btn btn-primary hidden" id="auth-btn-reg">注册并进入</button>
+      <button class="btn btn-ghost small hidden" id="auth-btn-offline">离线体验（进度仅存本机）</button>
+      <a class="auth-admin-link" href="admin.html" target="_blank">管理员后台 →</a>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 标题 ========== -->
+<div class="screen" id="s-title">
+  <div class="ver-badge" id="ver-badge"><i></i>v0.4.2b</div>
+  <div class="auth-user-chip" id="auth-user-chip"></div>
+  <div class="title-wrap">
+    <div class="title-kicker">游戏王 · 生存对决</div>
+    <h1 class="logo">决斗<span>幸存者</span></h1>
+    <div class="logo-en">D U E L &nbsp; S U R V I V O R</div>
+    <p class="title-desc">用真实的卡组召唤怪兽，在幻神守卫的神殿中活到最后。</p>
+    <div class="title-wallet">持有 <b id="wallet-top">¥ 0</b></div>
+    <div class="title-btns">
+      <button class="btn btn-primary" id="btn-start">开始决斗</button>
+      <button class="btn btn-ghost" id="btn-deck">卡组编辑</button>
+      <button class="btn btn-ghost" id="btn-shop">商店</button>
+      <button class="btn btn-ghost" id="btn-ach">成就</button>
+      <button class="btn btn-ghost" id="btn-howto">操作说明</button>
+    </div>
+    <div class="best" id="best-line">最佳记录 —</div>
+    <button class="btn btn-ghost small mode-switch" id="btn-device-mode" type="button">设备：自动</button>
+  </div>
+</div>
+
+<!-- ========== 第 2 步：游玩地图 ========== -->
+<div class="screen hidden" id="s-level">
+  <div class="sel-head">
+    <div class="sel-kicker">STEP 2 / 2 · SELECT ARENA</div>
+    <h2>选 择 地 图</h2>
+    <div class="lv-who" id="lv-who"></div>
+  </div>
+  <div class="lv-cards" id="lv-cards"></div>
+  <div class="sel-foot"><button class="btn btn-ghost small" id="btn-level-back">返回决斗者</button></div>
+</div>
+
+<!-- ========== 第 1 步：选择决斗者 ========== -->
+<div class="screen hidden" id="s-select">
+  <div class="sel-head">
+    <div class="sel-kicker" id="sel-arena-name">STEP 1 / 2 · 选择你的决斗者</div>
+    <h2>选择决斗者</h2>
+  </div>
+  <div class="sel-cards" id="sel-cards"></div>
+  <div class="sel-foot"><button class="btn btn-ghost small" id="btn-back">返回</button></div>
+</div>
+
+<!-- ========== 商店（剧集卡包） ========== -->
+<div class="screen dim hidden" id="s-shop">
+  <div class="panel wide">
+    <div class="sel-head row">
+      <div>
+        <div class="sel-kicker">CARD SHOP · 每包 10 张</div>
+        <h2>卡 包 商 店</h2>
+      </div>
+      <div class="wallet-chip">持有 <b id="shop-wallet">¥ 0</b></div>
+    </div>
+    <div class="shop-years" id="shop-years"></div>
+    <div class="shop-packs" id="shop-packs"></div>
+    <div class="panel-btns"><button class="btn btn-ghost" id="btn-shop-close">返回</button></div>
+  </div>
+</div>
+
+<!-- ========== 卡组编辑 ========== -->
+<div class="screen dim hidden" id="s-deck">
+  <div class="panel full">
+    <div class="sel-head row">
+      <div>
+        <div class="sel-kicker">DECK BUILDER</div>
+        <h2>卡 组 编 辑</h2>
+      </div>
+      <div class="wallet-chip">持有 <b id="deck-wallet">¥ 0</b></div>
+    </div>
+    <div class="dk-tabs">
+      <button class="dk-tab on" data-who="yugi">武藤游戏</button>
+      <button class="dk-tab" data-who="joey">城之内克也</button>
+      <button class="dk-tab" data-who="kaiba">海马濑人</button>
+    </div>
+    <div class="dk-tip">三位决斗者各自拥有完全独立的卡组 · 点击上方标签切换编辑 · 对局内使用当前所选决斗者的卡组</div>
+    <div class="deck-body" id="deck-body"></div>
+    <div class="panel-btns"><button class="btn btn-ghost" id="btn-deck-close">返回</button></div>
+  </div>
+</div>
+
+<!-- ========== 成就 ========== -->
+<div class="screen dim hidden" id="s-ach">
+  <div class="panel wide">
+    <div class="sel-head">
+      <div class="sel-kicker">ACHIEVEMENTS</div>
+      <h2>成 就</h2>
+    </div>
+    <div class="ach-body" id="ach-body"></div>
+    <div class="panel-btns"><button class="btn btn-ghost" id="btn-ach-close">返回</button></div>
+  </div>
+</div>
+
+<!-- ========== 暂停 ========== -->
+<div class="screen dim hidden" id="s-pause">
+  <div class="panel">
+    <h2 class="panel-title">回 合 暂 停</h2>
+    <div class="bgm-row">
+      <span class="bgm-label">♪ 背景音乐</span>
+      <input type="range" id="bgm-vol" min="0" max="100" value="35">
+      <b id="bgm-vol-num">35%</b>
+    </div>
+    <div class="bgm-now" id="bgm-now">♪ <b>千年アイテム</b><span>光宗信吉 · 程序化改编</span></div>
+    <div class="panel-btns">
+      <button class="btn btn-primary" id="btn-resume">继续决斗</button>
+      <button class="btn btn-ghost" id="btn-restart">重新开始</button>
+      <button class="btn btn-ghost" id="btn-quit">返回标题</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 召唤选择（祭品 / 超量 / 同调素材） ========== -->
+<div class="screen dim hidden" id="s-summon">
+  <div class="panel">
+    <h2 class="panel-title" id="summon-title">上级召唤 · 选择祭品</h2>
+    <!-- v23：融合第一步 —— 选择要融合出来的怪兽 -->
+    <div class="sum-tip hidden" id="summon-tip">第 1 步 / 共 2 步 · 选择融合出来的怪兽（绿框 = 素材齐备）</div>
+    <div class="summon-targets hidden" id="summon-targets"></div>
+    <!-- v23：融合第二步 —— 手牌中的素材（场上素材在下方五格） -->
+    <div class="sum-tip hidden" id="summon-hand-tip">第 2 步 / 共 2 步 · 选择融合素材（手牌区 + 场上五格）</div>
+    <div class="summon-handrow hidden" id="summon-handrow"></div>
+    <div class="summon-slots" id="summon-slots"></div>
+    <div class="sum-hint" id="summon-hint">点击怪兽卡作为素材 · 选满自动召唤 · ESC 取消</div>
+    <div class="panel-btns">
+      <button class="btn btn-primary small hidden" id="btn-summon-confirm">确认融合</button>
+      <button class="btn btn-ghost small" id="btn-summon-back">返回</button>
+      <button class="btn btn-ghost small" id="btn-summon-cancel">取消召唤</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 额外卡组（Q） ========== -->
+<div class="screen dim hidden" id="s-extra">
+  <div class="panel wide">
+    <h2 class="panel-title">额 外 卡 组</h2>
+    <div class="sum-hint">绿色 = 素材齐备可立即召唤 · 点击卡片发动同调 / 超量 / 连接 / 融合召唤 · ESC 关闭</div>
+    <div class="extra-grid" id="extra-grid"></div>
+    <div class="panel-btns">
+      <button class="btn btn-ghost small" id="btn-extra-close">关闭（Q）</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 结算 ========== -->
+<div class="screen dim hidden" id="s-result">
+  <div class="panel wide">
+    <div class="res-kicker" id="res-kicker">DUEL OVER</div>
+    <h2 class="res-title" id="res-title">败 北</h2>
+    <p class="res-sub" id="res-sub">你的 LP 归零了</p>
+    <div class="res-stats" id="res-stats"></div>
+    <div class="res-deck" id="res-deck"></div>
+    <div class="panel-btns row">
+      <button class="btn btn-primary" id="btn-again">再战一局</button>
+      <button class="btn btn-ghost" id="btn-change">更换决斗者</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 说明 ========== -->
+<div class="screen dim hidden" id="s-howto">
+  <div class="panel wide">
+    <h2 class="panel-title">操 作 说 明</h2>
+    <div class="howto-grid">
+      <div class="ht-item"><b>WASD / 方向键</b><span>决斗者走位（相对镜头方向，W 永远朝屏幕里走）· 怪兽自动跟随攻击</span></div>
+      <div class="ht-item"><b>鼠标移动</b><span>环绕决斗者转动视角（只转视角、不移动角色；按住 Alt 转向更快）</span></div>
+      <div class="ht-item"><b>指针锁定</b><span>战斗开始后指针隐藏并固定在屏幕中心（中心显示准星）；打开暂停 / 召唤 / 额外 / 墓地 / 结算弹窗时指针自动恢复；按 ESC 或点击画面可重新锁定</span></div>
+      <div class="ht-item"><b>Shift / 空格</b><span>冲刺加速 · 跳跃（滞空可躲开地面接触伤害）</span></div>
+      <div class="ht-item"><b>R</b><span>从卡组抽 1 张卡进手牌（最多 7 张）</span></div>
+      <div class="ht-item"><b>弃牌抽牌</b><span>手牌满了按 R 自动进入弃牌模式：点任意一张手牌送入墓地并抽 1 张（也可 Shift+1-7，或点卡面左下「弃」）· 开局 5 次，每升 1 级 +1 次 · ESC 取消</span></div>
+      <div class="ht-item"><b>艾克佐迪亚</b><span>「被封印的艾克佐迪亚」+ 左腕·右腕·左足·右足 五张同时在手牌 → 特殊胜利（无需打空 LP）；集齐进度显示在手牌上方</span></div>
+      <div class="ht-item"><b>点击手牌 / 1-7</b><span>通常召唤怪兽、发动魔法陷阱</span></div>
+      <div class="ht-item"><b>召唤规则</b><span>★1-4 直接出场 · ★5-6 需 1 祭品 · ★7+ 需 2 祭品 · 三幻神需 3 祭品</span></div>
+      <div class="ht-item"><b>登场效果</b><span>怪兽登场瞬间读取卡面原文（中/英）：破坏·伤害类引发冲击，带「全部/全场」语义的卡触发全场攻击；其余为抽卡·回复·强化·守护。全场效果仅在上级/融合/同调/超量/连接或 ★7+ 登场时生效</span></div>
+      <div class="ht-item"><b>融合召唤</b><span>发动手牌「融合」→ 第 1 步选融合出来的怪兽（绿框=素材齐备）→ 第 2 步在手牌 + 场上五格点选官方素材 → 「确认融合」。也可在 Q 额外卡组直接点融合怪兽进入选素材（同样需手牌「融合」）</span></div>
+      <div class="ht-item"><b>额外召唤</b><span>同调（调整＋等级合计，选好后点「确认召唤」）· 超量（同等级 2 只）· 连接（素材数）</span></div>
+      <div class="ht-item"><b>仪式召唤</b><span>仪式怪兽只能通过仪式魔法召唤（不能祭品召唤）。发动仪式魔法 → 从卡组中特殊召唤对应的仪式怪兽；手牌中点击仪式怪兽可查看提示</span></div>
+      <div class="ht-item"><b>效果代价</b><span>带负面效果的卡（支付基本分 / 丢弃手牌 / 从牌组送墓 / 解放怪兽）发动前会弹出「代价确认」窗，确认并校验可支付后才生效；手牌点击卡牌即显示效果文本</span></div>
+      <div class="ht-item"><b>艾克佐迪亚</b><span>五张部件（被封印的艾克佐迪亚 + 左腕·右腕·左足·右足）同时集齐在手牌 → 立即触发特殊胜利，无需按键</span></div>
+      <div class="ht-item"><b>F</b><span>释放终极技（能量满 + 王牌怪兽在场）</span></div>
+      <div class="ht-item"><b>G</b><span>发动手牌怪兽效果：时间魔术师每 3 分钟投 1 次硬币 —— 正面破坏全部敌人，反面破坏我方全部怪兽（发动前弹确认窗）</span></div>
+      <div class="ht-item"><b>库里波</b><span>在手牌中时自动发动：送入墓地抵消一次致死伤害</span></div>
+      <div class="ht-item"><b>场上上限</b><span>最多 5 只怪兽，被击破会进入墓地</span></div>
+      <div class="ht-item"><b>关卡解锁</b><span>击破当前关卡最终 Boss 即通关，并解锁下一座城市（王家神殿 → 决斗者王国 → 战斗都市）</span></div>
+      <div class="ht-item"><b>BGM</b><span>改编自光宗信吉的游戏王配乐：遊戯（开局·战斗）· 神の怒り（三幻神/法老）· 闇のゲーム（关卡 BOSS）· 決闘者の魂（决斗者挑战）· 勝利／敗北 · 千年アイテム（菜单）</span></div>
+      <div class="ht-item"><b>ESC / P</b><span>暂停（指针锁定时按 ESC 会先释放指针并自动暂停，方便点击界面）</span></div>
+    </div>
+    <div class="panel-btns"><button class="btn btn-ghost" id="btn-howto-close">知道了</button></div>
+  </div>
+</div>
+
+<!-- 卡包开启层 -->
+<div id="pack-layer"></div>
+
+<!-- ========== 墓地 / 额外卡组查询（Tab） ========== -->
+<div class="screen dim hidden" id="s-grave">
+  <div class="panel wide">
+    <div class="sel-head row">
+      <div>
+        <div class="sel-kicker">GY &amp; EXTRA DECK · TAB 关闭</div>
+        <h2>墓 地 · 额 外 卡 组</h2>
+      </div>
+      <div class="wallet-chip">墓地 <b id="grave-count">0</b> · 额外 <b id="grave-extra-count">0</b></div>
+    </div>
+    <div class="gwrap">
+      <h3>墓 地（按送入顺序）</h3>
+      <div class="ggrid" id="grave-cards"></div>
+    </div>
+    <div class="gwrap">
+      <h3>额 外 卡 组</h3>
+      <div class="ggrid" id="grave-extra-cards"></div>
+    </div>
+    <div class="panel-btns"><button class="btn btn-ghost" id="btn-grave-close">关闭（Tab）</button></div>
+  </div>
+</div>
+
+<!-- 卡包内容弹窗 -->
+<div id="digi-layer" class="digi-layer">
+  <div class="digi-panel">
+    <div class="sel-head row">
+      <div>
+        <div class="sel-kicker" id="digi-kicker">FULL DIGITAL POOL · 每张等概率</div>
+        <h2 id="digi-title">数 字 卡 包 · 卡 池 一 览</h2>
+      </div>
+      <div class="wallet-chip">持有 <b id="digi-wallet">¥ 0</b></div>
+    </div>
+    <input class="shop-search" id="digi-search" type="text" placeholder="搜索卡名（支持中文 / 英文）">
+    <div class="digi-grid" id="digi-grid"></div>
+    <div class="digi-pager" id="digi-pager"></div>
+    <div class="panel-btns row">
+      <button class="btn btn-primary" id="digi-buy">购买并抽取 10 张 · ¥480</button>
+      <button class="btn btn-ghost" id="digi-close">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== v0.3.0 手机端：横屏提示 + 触屏虚拟按键（touch.js 控制，仅触屏设备显示） ========== -->
+<div id="rotate-hint">
+  <div class="rh-box">
+    <div class="rh-icon">
+      <svg viewBox="0 0 64 64"><rect x="20" y="8" width="24" height="48" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><path d="M8 32 H2 M62 32 h-6 M10 18 L5 14 M54 14 l-5 4 M10 46 l-5 4 M54 50 l-5-4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="50" r="2.6" fill="currentColor"/></svg>
+    </div>
+    <div class="rh-txt">请横屏游玩<em>旋转手机获得最佳决斗体验</em></div>
+  </div>
+</div>
+<div id="touch-ui" class="hidden">
+  <!-- 左侧：浮动虚拟摇杆（移动） -->
+  <div id="joy-zone">
+    <div id="joy-base"><div id="joy-knob"></div></div>
+  </div>
+  <!-- 右侧：功能按键 -->
+  <div id="tbtns">
+    <button class="tbtn tb-ult" id="tb-ult" type="button"><b>大招</b><i id="tb-ult-ring"></i></button>
+    <button class="tbtn tb-draw" id="tb-draw" type="button"><b>抽卡</b></button>
+    <button class="tbtn tb-dash" id="tb-dash" type="button"><b>冲刺</b></button>
+    <button class="tbtn tb-jump" id="tb-jump" type="button"><b>跳跃</b></button>
+  </div>
+</div>
+<!-- v0.4.1：全屏常驻退出按钮 —— #touch-ui 在菜单/暂停/结算时会隐藏，
+     若正处于全屏则玩家没有任何界面手段退出，此按钮仅在 fullscreen 激活且触屏模式下显示 -->
+<button id="fs-exit" type="button" class="hidden" title="退出全屏"><b>退出全屏</b></button>
+
+<!-- ========== v0.4.0 手牌选择弹窗：召唤 or 发动效果 ========== -->
+<div class="screen dim hidden" id="s-playpick">
+  <div class="panel pp-panel">
+    <div class="sel-kicker">SELECT ACTION · 选择行动</div>
+    <div class="pp-body">
+      <div class="pp-card" id="pp-card"></div>
+      <div class="pp-acts">
+        <h3 class="pp-name" id="pp-name">—</h3>
+        <!-- v0.4.2：点击卡牌即显示效果文本（无需长按） -->
+        <div class="pp-fx-note" id="pp-fx-note"></div>
+        <button class="btn btn-primary pp-btn" id="pp-summon" type="button">通常召唤</button>
+        <button class="btn btn-magic pp-btn" id="pp-act" type="button">发动效果</button>
+        <button class="btn btn-ghost pp-btn" id="pp-fx" type="button">发动效果</button>
+        <button class="btn btn-ghost small pp-btn" id="pp-mill" type="button">弃牌抽 1</button>
+        <button class="btn btn-ghost small pp-btn" id="pp-cancel" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== v0.4.2 代价确认弹窗：支付 LP / 丢弃手牌 / 卡组送墓 等负面效果 ========== -->
+<div class="screen dim hidden" id="s-cost">
+  <div class="panel pp-panel">
+    <div class="sel-kicker">CONFIRM COST · 效果代价确认</div>
+    <div class="pp-body">
+      <div class="pp-card" id="cost-card"></div>
+      <div class="pp-acts">
+        <h3 class="pp-name" id="cost-name">—</h3>
+        <div class="pp-fx-note" id="cost-fx-note"></div>
+        <div class="cost-list" id="cost-list"></div>
+        <button class="btn btn-primary pp-btn" id="cost-ok" type="button">确认发动</button>
+        <button class="btn btn-ghost small pp-btn" id="cost-cancel" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== v0.4.2 代价执行：多张丢弃自选弹窗 ========== -->
+<div class="screen dim hidden" id="s-costpick">
+  <div class="panel wide">
+    <div class="sel-head row">
+      <div>
+        <div class="sel-kicker">DISCARD COST · 丢弃手牌</div>
+        <h2>选 择 丢 弃</h2>
+      </div>
+      <div class="wallet-chip">需弃 <b id="costp-need">0</b></div>
+    </div>
+    <div class="sum-hint" id="costp-hint">点击手牌送入墓地作为代价</div>
+    <div class="extra-grid" id="costp-grid"></div>
+    <div class="panel-btns">
+      <button class="btn btn-ghost small" id="costp-close">取消（ESC）</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== v0.4.0 死者苏生：墓地选择弹窗 ========== -->
+<div class="screen dim hidden" id="s-revpick">
+  <div class="panel wide">
+    <div class="sel-head row">
+      <div>
+        <div class="sel-kicker">MONSTER REBORN · 选择复活的怪兽</div>
+        <h2>死 者 苏 生</h2>
+      </div>
+      <div class="wallet-chip">可复活 <b id="revp-count">0</b></div>
+    </div>
+    <div class="sum-hint">点击墓地中的怪兽将其特殊召唤 · 三幻神复活后只能存在 30 秒 · ESC 关闭</div>
+    <div class="extra-grid" id="revp-grid"></div>
+    <div class="panel-btns">
+      <button class="btn btn-ghost small" id="revp-close">关闭（ESC）</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== v0.4.0 手机端手牌面板 ========== -->
+<div class="screen dim hidden" id="s-handm">
+  <div class="panel wide">
+    <div class="sel-head row">
+      <div>
+        <div class="sel-kicker">YOUR HAND · 点击卡牌选择行动</div>
+        <h2>手 牌</h2>
+      </div>
+      <div class="wallet-chip"><b id="handm-count">0/7</b></div>
+    </div>
+    <div class="extra-grid" id="handm-grid"></div>
+    <!-- v0.4.2b：弃牌模式提示（满手抽卡后触屏唯一的弃牌入口） -->
+    <div class="sum-hint" id="handm-hint" style="display:none"></div>
+    <div class="panel-btns">
+      <button class="btn btn-ghost small" id="handm-close">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/three.min.js"></script>
+<script src="js/card3d.js"></script>
+<script src="js/models3d.js?v=042b"></script>
+<script src="data/cards.js"></script>
+<script src="data/cards_ext.js"></script>
+<script>
+/* 卡图解析：优先本地已下载卡图，其余走官方 CDN */
+window.__cardImg = function (id) {
+  var local = window.LOCAL_IMGS || [];
+  for (var i = 0; i < local.length; i++) if (+local[i] === +id) return "data/cardimg/" + id + ".jpg";
+  return "https://images.ygoprodeck.com/images/cards/" + id + ".jpg";
+};
+/* 云服务公开配置（仅公开凭据：endpoint + publishableKey，无任何私密密钥） */
+window.DS_PUBLIC_CONFIG = {
+  endpoint: "https://duel-survivor.app.workbuddy.host",
+  oauthRelayBaseUrl: "https://www.workbuddy.cn/v2/as/genie-baas/oauth",
+  publishableKey: "wbpk_sxEJaFtLNsUkXDTqQEj7X4_VTZCjWgwLQuG2hJH3wATLps0KH2K5viY"
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
+<script src="js/cloud.js?v=042b"></script>
+<script src="js/meta.js?v=042b"></script>
+<script src="js/game.js?v=042b"></script>
+<script src="js/touch.js?v=042b"></script>
+</body>
+</html>
