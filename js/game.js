@@ -8,7 +8,7 @@ const T = THREE;
 const V3 = T.Vector3;
 const TAU = Math.PI * 2;
 /* 版本号（主界面左上角展示） */
-const GAME_VERSION = '0.4.2b';
+const GAME_VERSION = '0.4.3';
 
 /* ---------------- 工具 ---------------- */
 const rnd = (a, b) => a + Math.random() * (b - a);
