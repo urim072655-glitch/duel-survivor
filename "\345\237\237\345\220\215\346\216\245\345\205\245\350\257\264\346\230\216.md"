@@ -1,5 +1,11 @@
 # duelsurvivor.com 域名接入说明
 
+> **状态：已搁置（2026-10-20 决定继续使用原域名）**
+> 当前站点的用户端与管理端都固定在 `https://duel-survivor.app.workbuddy.host/?sharecode=67N6NH4NTQ`，
+> 代码里没有任何 `duelsurvivor.com` 的引用，无需回滚。
+> 本文仅作为「以后想换域名」时的操作手册保留，届时按第二节开始执行即可。
+
+---
 > 结论先说：**`duelsurvivor.com` 目前还没有被注册**（Verisign 权威 whois 返回 `No match for "DUELSURVIVOR.COM"`，DNS 查询为 NXDOMAIN）。
 > 所以现在没有任何办法让它指向站点——必须先买下这个域名，拿到 DNS 控制权，剩下的两步我可以直接替你做完。
 
