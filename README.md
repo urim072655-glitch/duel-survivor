@@ -2,7 +2,7 @@
 
 游戏王主题的 3D 类吸血鬼幸存者（Survivors-like）Roguelike 网页游戏。纯前端实现，无需构建步骤；账号系统与云端进度由 WorkBuddy 云服务提供。
 
-当前版本：**v0.4.2c**（云账号版：注册 / 登录 + 云端存档 + 云端管理后台）
+当前版本：**v0.4.2f**（云账号版：注册 / 登录 + 云端存档 + 云端管理后台）
 
 ## 玩法概要
 
@@ -74,12 +74,14 @@ npx serve .
 | 用户端 | `index.html` | 注册 / 登录后进入游戏；右上角有「管理员后台 →」入口 |
 | 管理端 | `admin.html` | 用**管理员账号**（`ds_users.is_admin = true`）登录，管理全体玩家 |
 
-管理端能力：查看注册用户与在线情况、**发放日元**（给指定玩家加减，玩家端 15 秒内自动到账）、
+管理端能力：查看注册用户与在线情况、**发放日元**（给指定玩家加减，玩家端 15 秒内自动到账；
+发放走 `data.yenSeq` 版本号，玩家端推送前会先合并，不会被本地存档覆盖）、
 新建玩家账号、重置玩家密码、查看单个玩家的进度与卡牌收集。
 
 账号数据存于云库 `ds_users`：密码仅保存 `SHA-256('ds:v1:' + 密码)` 摘要，明文不出浏览器。
 
 ## 在线游玩
 
-- WorkBuddy 托管（v0.4.2c · 账号版）：https://duel-survivor.app.workbuddy.host/?sharecode=67N6NH4NTQ
-- GitHub Pages（v0.4.3 · 离线版，无登录）：https://urim072655-glitch.github.io/duel-survivor/
+- **WorkBuddy 托管（v0.4.2f · 推荐）**：https://duel-survivor.app.workbuddy.host/?sharecode=67N6NH4NTQ
+- GitHub 仓库（源码备份）：https://github.com/urim072655-glitch/duel-survivor
+- GitHub Pages（v0.4.2f · 国内加载很慢，仅供海外/备用）：https://urim072655-glitch.github.io/duel-survivor/
