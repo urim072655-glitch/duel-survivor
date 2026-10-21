@@ -2379,6 +2379,22 @@
     return a;
   }
 
+  /* v0.5.1：假阴影 —— 共享几何/材质的黑色半透明椭圆，垫在建模怪兽脚下，
+   * 让卡牌看起来「立」在地面上而不是悬浮的 UI（纯视觉，零玩法影响）。
+   * 按需开启（opt.shadow）：敌人/Boss 已由 game.js 的 shadowInst 实例化阴影覆盖，
+   * 只有玩家场上怪兽等未被覆盖的对象才需要挂一份，避免重复 draw call */
+  let _shGeo = null, _shMat = null;
+  function fakeShadow(rx) {
+    if (!_shGeo) _shGeo = new T.CircleGeometry(1, 22);
+    if (!_shMat) _shMat = new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.34, depthWrite: false });
+    const s = new T.Mesh(_shGeo, _shMat);
+    s.rotation.x = -Math.PI / 2;
+    s.position.y = 0.018;
+    s.scale.set(rx, rx * 0.55, 1);
+    s.renderOrder = -1;
+    return s;
+  }
+
   function cardBillboard(rec, opt) {
     const img = opt.img;
     const color = opt.color || artColor(img, 0x8a7a5c);
@@ -2405,6 +2421,7 @@
     const pedRing = new T.Mesh(BB.pedRingGeo, BB.pedRingM);
     pedRing.rotation.x = Math.PI / 2; pedRing.position.y = 0.075;
     g.add(ped, pedRing);
+    if (opt.shadow) g.add(fakeShadow(0.95));        // v0.5.1：脚下假阴影（按需）
     g.userData.pedRing = pedRing;
     // 脚下光晕（v0.4.1：材质按颜色缓存）
     const aura = new T.Sprite(auraMat(color));
@@ -2437,6 +2454,7 @@
   g.userData.recId = id;
   g.userData.color = color;
   if (opt.scale) g.scale.setScalar(g.scale.x * opt.scale);
+  g.add(fakeShadow(1.15));                         // v0.5.1：脚下假阴影（建模怪兽无实例化阴影，常开）
   // 脚下光晕（v0.4.1：与立牌共用按颜色缓存的材质）
   const aura = new T.Sprite(auraMat(color));
   aura.scale.set(1.9, 1.2, 1);

@@ -19,9 +19,13 @@ window.DSCLOUD = (function () {
 
   /* ---------- 工具 ---------- */
   async function sha256(s) {
-    if (!window.crypto || !crypto.subtle) throw new Error('当前环境不支持安全哈希（需要 https 或 localhost）');
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
-    return Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, '0')).join('');
+    if (window.crypto && crypto.subtle) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+      return Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, '0')).join('');
+    }
+    /* v0.5.2b：非安全上下文（http://局域网IP）无 crypto.subtle，走纯 JS 实现（摘要一致） */
+    if (window.DSSHA256) return DSSHA256.hexUtf8(s);
+    throw new Error('当前环境不支持安全哈希（需要 https 或 localhost）');
   }
   const hashPwd = pwd => sha256(SALT + pwd);
 
@@ -35,6 +39,14 @@ window.DSCLOUD = (function () {
   /* ---------- 初始化 ---------- */
   function init() {
     try {
+      /* v0.5.2：本地后端优先（?localapi=1 / localStorage.ds_local_api=1）——
+       * 本地服务器启动器场景下，用户端数据改由同源 server.py 接收；
+       * 默认（不开启）仍走远程 SDK，DS_PUBLIC_CONFIG.endpoint 保持不变 */
+      if (window.DSLocalDB && window.DSLocalDB.enabled()) {
+        cloud = window.DSLocalDB.create();
+        sdkOk = true;
+        return sdkOk;
+      }
       if (!window.WorkBuddyCloud || !window.DS_PUBLIC_CONFIG) { sdkOk = false; return false; }
       cloud = window.WorkBuddyCloud.createWorkBuddyCloud({
         endpoint: window.DS_PUBLIC_CONFIG.endpoint,
@@ -77,7 +89,9 @@ window.DSCLOUD = (function () {
     if (!pwd || pwd.length < 4) return { ok: false, msg: '密码至少 4 位' };
     try {
       const h = await hashPwd(pwd);
-      const { error } = await db().from('ds_users').insert({ name, pwd_hash: h, is_admin: false, data: { yen: 5000 } });
+      /* v0.5.2c：注册即写入 tut:0 —— 云端存档会覆盖本地（afterAuth → applyCloudSave），
+       * 若这里只给 { yen }，load() 会把缺字段的老存档判定为「已完成教学」，新玩家就拿不到教学关了 */
+      const { error } = await db().from('ds_users').insert({ name, pwd_hash: h, is_admin: false, data: { yen: 5000, tut: 0 } });
       if (error) return { ok: false, msg: errText(error) };
       return await doLogin(name, pwd, true);
     } catch (e) { return { ok: false, msg: errText(e) }; }
@@ -246,9 +260,13 @@ window.DSCLOUD = (function () {
       $('auth-ok-line').className = 'auth-line bad';
       return;
     }
-    /* 云端进度 > 本地进度：有云端存档则覆盖本地 */
-    if (res.data && typeof res.data === 'object' && Object.keys(res.data).length) {
-      try { if (window.META && META.applyCloudSave) META.applyCloudSave(res.data); } catch (e) {}
+    /* 云端进度 > 本地进度：有云端存档则覆盖本地
+     * v0.5.2c：本地后端把 data 存成 JSON 字符串，需先解析 —— 否则登录后云端存档（含教学关进度 tut）
+     * 永远覆盖不到本地，换设备/清缓存重登就能把两关教学奖励重复领一遍 */
+    let cdata = res.data;
+    if (typeof cdata === 'string') cdata = safeParseC(cdata);
+    if (cdata && typeof cdata === 'object' && Object.keys(cdata).length) {
+      try { if (window.META && META.applyCloudSave) META.applyCloudSave(cdata); } catch (e) {}
     } else if (window.META && META.persist && window.__DS) {
       /* 新账号：把本地当前进度作为初始存档推上云端 */
       try { META.persist(); } catch (e) {}
@@ -298,6 +316,8 @@ window.DSCLOUD = (function () {
       if (e.key === 'Enter') ($('auth-btn-login').classList.contains('hidden') ? doReg : doLogin)();
     });
     $('auth-btn-offline').addEventListener('click', () => {
+      /* v0.5.0：离线模式首次交互初始化音频 */
+      if (window.initAudio) window.initAudio();
       setSession('__offline__');
       hideAuth();
       toast('离线模式 · 进度仅保存在本机');

@@ -8,7 +8,7 @@ const T = THREE;
 const V3 = T.Vector3;
 const TAU = Math.PI * 2;
 /* 版本号（主界面左上角展示） */
-const GAME_VERSION = '0.4.2g';
+const GAME_VERSION = '0.5.2';
 
 /* ---------------- 工具 ---------------- */
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -718,7 +718,10 @@ function jackalStatue() {
   scene.add(gl);
 });
 
-/* ---- 遗迹残件（断柱、倒下的柱头） ---- */
+/* ---- 遗迹残件（断柱、倒下的柱头） ----
+ * v0.5.1：原先 2/3 的残件是「棕色木箱」BoxGeometry，与神殿遗迹题材不符、
+ * 且在怪海里形成无意义的视觉噪声。改为断柱残桩 + 低多边形碎石，
+ * 轮廓高低错落，既贴合场景又能当作距离参照物（纯装饰，无碰撞、无玩法影响） */
 for (let i = 0; i < 18; i++) {
   const a = rnd(0, TAU), r = rnd(18, 46);
   const bx = Math.cos(a) * r, bz = Math.sin(a) * r;
@@ -729,12 +732,31 @@ for (let i = 0; i < 18; i++) {
     drum.rotation.set(rnd(-0.2, 0.2), rnd(0, TAU), rnd(-0.3, 0.3));
     drum.castShadow = true; drum.receiveShadow = true;
     scene.add(drum);
+  } else if (i % 3 === 1) {
+    /* 断柱残桩：柱身 + 斜断的柱头碎块，高度随机形成错落天际线 */
+    const ph = rnd(1.5, 3.4);
+    const stub = new T.Mesh(new T.CylinderGeometry(0.6, 0.78, ph, 9), stoneMat);
+    stub.position.set(bx, gy + ph * 0.5, bz);
+    stub.rotation.set(rnd(-0.05, 0.05), rnd(0, TAU), rnd(-0.05, 0.05));
+    stub.castShadow = true; stub.receiveShadow = true;
+    scene.add(stub);
+    const cap = new T.Mesh(new T.CylinderGeometry(0.5, 0.62, 0.55, 8), stoneLight);
+    cap.position.set(bx + rnd(-0.25, 0.25), gy + ph + 0.16, bz + rnd(-0.25, 0.25));
+    cap.rotation.set(rnd(-0.4, 0.4), rnd(0, TAU), rnd(-0.4, 0.4));
+    cap.castShadow = true; cap.receiveShadow = true;
+    scene.add(cap);
   } else {
-    const shard = new T.Mesh(new T.BoxGeometry(rnd(1.0, 2.4), rnd(0.4, 1.0), rnd(0.9, 2.0)), stoneDark);
-    shard.position.set(bx, gy + 0.32, bz);
-    shard.rotation.set(rnd(-0.18, 0.18), rnd(0, TAU), rnd(-0.18, 0.18));
-    shard.castShadow = true; shard.receiveShadow = true;
-    scene.add(shard);
+    /* 低多边形碎石：半埋入地面，2～3 块一组 */
+    const n = 2 + (Math.random() < 0.5 ? 1 : 0);
+    for (let k = 0; k < n; k++) {
+      const rr = rnd(0.45, 1.0);
+      const rk = new T.Mesh(new T.IcosahedronGeometry(rr, 0), stoneDark);
+      rk.position.set(bx + rnd(-1.3, 1.3), gy + rr * rnd(0.2, 0.42), bz + rnd(-1.3, 1.3));
+      rk.rotation.set(rnd(0, TAU), rnd(0, TAU), rnd(0, TAU));
+      rk.scale.set(rnd(0.8, 1.3), rnd(0.55, 0.9), rnd(0.8, 1.3));
+      rk.castShadow = true; rk.receiveShadow = true;
+      scene.add(rk);
+    }
   }
 }
 
@@ -751,6 +773,55 @@ const arenaGroup = new T.Group();
   }
 }
 scene.add(arenaGroup);
+
+/* ---- v0.5.1：玩家专属魔法阵（亮蓝 · 独一无二辨识）+ 假阴影 ----
+ * 程序化 canvas 贴图：双环 + 刻度符文带 + 五芒星 + 中心辉光；
+ * 跟随玩家脚下、缓慢自转，解决「满屏卡牌分不清谁是玩家」的问题 */
+function magicCircleTex() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const x = c.getContext('2d');
+  const cx = 128, cy = 128;
+  x.strokeStyle = 'rgba(90,190,255,0.95)'; x.lineWidth = 5;
+  x.beginPath(); x.arc(cx, cy, 118, 0, TAU); x.stroke();
+  x.lineWidth = 2; x.strokeStyle = 'rgba(120,205,255,0.8)';
+  x.beginPath(); x.arc(cx, cy, 104, 0, TAU); x.stroke();
+  for (let i = 0; i < 36; i++) {
+    const a = i / 36 * TAU;
+    x.strokeStyle = i % 3 ? 'rgba(120,210,255,0.5)' : 'rgba(190,238,255,0.95)';
+    x.lineWidth = i % 3 ? 2 : 3.5;
+    x.beginPath();
+    x.moveTo(cx + Math.cos(a) * 88, cy + Math.sin(a) * 88);
+    x.lineTo(cx + Math.cos(a) * 100, cy + Math.sin(a) * 100);
+    x.stroke();
+  }
+  x.strokeStyle = 'rgba(150,225,255,0.9)'; x.lineWidth = 3;
+  x.beginPath();
+  for (let i = 0; i <= 5; i++) {
+    const a = -Math.PI / 2 + i * 4 * Math.PI / 5;
+    const px = cx + Math.cos(a) * 72, py = cy + Math.sin(a) * 72;
+    if (i) x.lineTo(px, py); else x.moveTo(px, py);
+  }
+  x.stroke();
+  x.beginPath(); x.arc(cx, cy, 72, 0, TAU); x.lineWidth = 2; x.strokeStyle = 'rgba(90,190,255,0.55)'; x.stroke();
+  const rg = x.createRadialGradient(cx, cy, 4, cx, cy, 62);
+  rg.addColorStop(0, 'rgba(170,228,255,0.55)'); rg.addColorStop(1, 'rgba(170,228,255,0)');
+  x.fillStyle = rg; x.beginPath(); x.arc(cx, cy, 62, 0, TAU); x.fill();
+  return new T.CanvasTexture(c);
+}
+const playerCircle = new T.Mesh(new T.PlaneGeometry(3.6, 3.6), new T.MeshBasicMaterial({
+  map: magicCircleTex(), transparent: true, opacity: 0.9,
+  blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide
+}));
+playerCircle.rotation.x = -Math.PI / 2;
+playerCircle.visible = false;
+scene.add(playerCircle);
+const playerShadow = new T.Mesh(new T.CircleGeometry(1, 22),
+  new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false }));
+playerShadow.rotation.x = -Math.PI / 2;
+playerShadow.scale.set(0.78, 0.46, 1);
+playerShadow.visible = false;
+scene.add(playerShadow);
 
 /* ---- 其余两关的场景装饰（构建时隐藏，进关时切换） ---- */
 const decorKingdom = new T.Group();
@@ -1111,9 +1182,9 @@ const LEVELS = [
     sub: '幻之决斗孤岛', desc: '佩加索斯城堡下的星光决斗',
     duration: 480,
     bosses: [
-      { key: 'skull', t: 110, recId: 70781052, label: '恶魔召唤', hp: 12000, dmg: 700, spd: 2.3, scale: 2.9, color: 0x9a4ae0, moves: ['fist', 'quake'], tip: '恶魔之拳 · 大地粉碎' },
-      { key: 'bewd', t: 230, recId: 89631139, label: '青眼白龙', hp: 20000, dmg: 800, spd: 2.7, scale: 3.0, color: 0x4fa8e8, moves: ['breath', 'thunder'], tip: '破坏的咆哮 · 闪电风暴' },
-      { key: 'gate', t: 350, recId: 98434877, label: '门之守护者', hp: 38000, dmg: 900, spd: 2.0, scale: 3.4, color: 0x51e88a, moves: ['quake', 'sun', 'breath'], tip: '死之磁圈 · 三合一雷击', phases: 3 }
+      { key: 'skull', t: 110, recId: 70781052, label: '恶魔召唤', hp: 26000, dmg: 700, spd: 2.3, scale: 2.9, color: 0x9a4ae0, moves: ['fist', 'quake'], tip: '恶魔之拳 · 大地粉碎' },
+      { key: 'bewd', t: 230, recId: 89631139, label: '青眼白龙', hp: 48000, dmg: 800, spd: 2.7, scale: 3.0, color: 0x4fa8e8, moves: ['breath', 'thunder'], tip: '破坏的咆哮 · 闪电风暴' },
+      { key: 'gate', t: 350, recId: 98434877, label: '门之守护者', hp: 90000, dmg: 900, spd: 2.0, scale: 3.4, color: 0x51e88a, moves: ['quake', 'sun', 'breath'], tip: '死之磁圈 · 三合一雷击', phases: 3 }
     ],
     winText: '你穿越了决斗者王国，下一座舞台是战斗都市'
   },
@@ -1122,10 +1193,10 @@ const LEVELS = [
     sub: '海马都市 · 夜战', desc: '霓虹高楼间的传说之决斗',
     duration: 480,
     bosses: [
-      { key: 'bewd2', t: 100, recId: 89631139, label: '青眼白龙 · 改', hp: 16000, dmg: 860, spd: 3.0, scale: 3.0, color: 0x60c8ff, moves: ['breath', 'thunder'], tip: '强化咆哮' },
-      { key: 'ultdy', t: 220, recId: 23995346, label: '青眼究极龙', hp: 42000, dmg: 980, spd: 2.3, scale: 3.6, color: 0x8fd4ff, moves: ['breath', 'sun', 'pillar'], tip: '破灭的爆裂疾风弹',
+      { key: 'bewd2', t: 100, recId: 89631139, label: '青眼白龙 · 改', hp: 26000, dmg: 860, spd: 3.0, scale: 3.0, color: 0x60c8ff, moves: ['breath', 'thunder'], tip: '强化咆哮' },
+      { key: 'ultdy', t: 220, recId: 23995346, label: '青眼究极龙', hp: 48000, dmg: 980, spd: 2.3, scale: 3.6, color: 0x8fd4ff, moves: ['breath', 'sun', 'pillar'], tip: '破灭的爆裂疾风弹',
         failAfter: 70, failTitle: '破灭的爆裂疾风弹', failSub: '青眼究极龙的疾风弹轰穿了整座都市 —— 没有决斗者能在三连白光下存续' },
-      { key: 'chmax', t: 340, recId: 55410871, label: '青眼混沌极龙', hp: 52000, dmg: 1080, spd: 2.2, scale: 3.5, color: 0xb08cff, moves: ['quake', 'sun', 'pillar'], tip: '混沌之炎 · 极龙咆哮', phases: 3 }
+      { key: 'chmax', t: 340, recId: 55410871, label: '青眼混沌极龙', hp: 88000, dmg: 1080, spd: 2.2, scale: 3.5, color: 0xb08cff, moves: ['quake', 'sun', 'pillar'], tip: '混沌之炎 · 极龙咆哮', phases: 3 }
     ],
     winText: '你称霸了战斗都市 —— 海马都市的夜空为你而亮'
   }
@@ -1141,17 +1212,20 @@ function injectLevelBosses(lv) {
     GOD_REC[b.key] = { id: b.recId, name: b.label, race: 'Dragon', level: 8, kind: 'effect' };
   }
 }
+/* v0.5.0 数值重算：Boss HP = 玩家成型DPS(对Boss有效) × 目标时长75s × 0.7
+ * 现网时长分布 17-46s 全部低于 60s 下限 → 上调至 60-90s 区间
+ * （DPS 模型含 Boss 承伤系数 0.35-0.55：小怪会吸走场上怪兽的最近目标攻击） */
 const BOSS_META = {
   obelisk: {
-    label: '欧贝利斯克的巨神兵', hp: 9000, dmg: 620, spd: 2.15, color: 0x4a7fe0,
+    label: '欧贝利斯克的巨神兵', hp: 27000, dmg: 620, spd: 2.15, color: 0x4a7fe0,
     scale: 3.1, moves: ['fist', 'quake'], tip: '巨神兵拳 · 大地粉碎'
   },
   slifer: {
-    label: '奥西里斯的天空龙', hp: 17000, dmg: 720, spd: 2.5, color: 0xe04a3a,
+    label: '奥西里斯的天空龙', hp: 37000, dmg: 720, spd: 2.5, color: 0xe04a3a,
     scale: 3.2, moves: ['thunder', 'breath'], tip: '召雷弹 · 雷之吹息'
   },
   ra: {
-    label: '太阳神之翼神龙', hp: 26000, dmg: 820, spd: 2.2, color: 0xe0a83a,
+    label: '太阳神之翼神龙', hp: 51000, dmg: 820, spd: 2.2, color: 0xe0a83a,
     scale: 3.3, moves: ['pillar', 'sun'], tip: '神炎加农 · 太阳烈焰'
   },
   pharaoh: {
@@ -1328,7 +1402,7 @@ function burst(x, y, z, n, color, spd, life, big, grav) {
 }
 
 /* ---------------- 经验星屑 ---------------- */
-const ORB_MAX = 320;
+let ORB_MAX = 320;
 const orbMesh = new T.InstancedMesh(
   new T.OctahedronGeometry(0.15, 0),
   new T.MeshStandardMaterial({ color: 0xffd76b, emissive: 0xffb020, emissiveIntensity: 1.9, roughness: 0.3, metalness: 0.4 }),
@@ -1368,7 +1442,6 @@ function updateOrbs(dt) {
       if (d < 0.55) {
         o.alive = false;
         G.exp += o.val * P.expMul;
-        G.ult = Math.min(100, G.ult + 0.42);
         burst(o.x, 0.5, o.z, 2, 0xffd76b, 2, 0.25);
         checkLevel();
         _m4.makeScale(0, 0, 0); orbMesh.setMatrixAt(i, _m4);
@@ -1488,6 +1561,9 @@ function spawnEnemy(type, x, z) {
     sp = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, alphaTest: 0.12 }));
     sp.scale.set(w, h, 1);
   }
+  /* v0.5.1：精英怪视觉分级 —— 模型放大 1.3×（只改观感，rad/伤害/血量等判定数值一律不动），
+   * 配合下方红色边缘光晕，让玩家在怪海里一眼认出「这只不一样」 */
+  if (def.elite) sp.scale.multiplyScalar(1.3);
   const e = {
     type, def, boss: false, rec,
     hp: def.hp * Math.min(DIFF.hpCap, tScale), maxHp: def.hp * Math.min(DIFF.hpCap, tScale),
@@ -1507,6 +1583,18 @@ function spawnEnemy(type, x, z) {
     ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.08, z);
     scene.add(ring);
     e.groundRing = ring;
+    /* v0.5.1：卡面背后的红色光晕 —— 精英专属轮廓色（材质全局共享一份） */
+    if (sp.isGroup) {
+      if (!spawnEnemy._rimMat) spawnEnemy._rimMat = new T.SpriteMaterial({
+        map: TEX_GLOW, color: 0xff3b2b, transparent: true, opacity: 0.5,
+        blending: T.AdditiveBlending, depthWrite: false
+      });
+      const rim = new T.Sprite(spawnEnemy._rimMat);
+      rim.scale.set(1.75, 2.15, 1);
+      rim.position.set(0, 1.11, -0.06);
+      sp.add(rim);
+      e.rim = rim;
+    }
   }
   scene.add(sp);
   enemies.push(e);
@@ -1929,7 +2017,22 @@ function rivalPlayCard(e) {
 }
 
 /* ---------------- Boss 招式 ---------------- */
+/* v0.5.0：攻击前摇预警 —— 出招前 0.85s 显示脚下红色警示环 + 「前摇」飘字 + 音效，
+ * 给玩家可读的躲避窗口，让 Boss 战从「打木桩」变成有压迫感的对决 */
 function bossMove(e) {
+  const meta = BOSS_META[e.key];
+  if (!meta || e.dead || e._winding) return;
+  e._winding = true;
+  addRing(e.pos.x, e.pos.z, 1.4, 5.5, 0, 0xff3b3b, 0.5);
+  popDamage(e.pos.x, (e.h || 6) + 1.4, e.pos.z, '前摇！', 'crit');
+  playSfx('reveal');
+  timers.push({ t: 0.85, fn: function () {
+    e._winding = false;
+    if (e.dead) return;
+    bossMoveExec(e);
+  } });
+}
+function bossMoveExec(e) {
   const meta = BOSS_META[e.key];
   if (!meta) return;
   const mv = pick(meta.moves);
@@ -2125,7 +2228,7 @@ function hurtEnemy(e, amount, isCrit) {
     G.shake = Math.max(G.shake, 0.12);
     burst(e.pos.x, (e.h || 1) * 0.55, e.pos.z, 10, 0xfff3b0, 9, 0.5);
   }
-  G.ult = Math.min(100, G.ult + dmg * 0.0035);
+  /* v0.5.0：终结技能量不再来自伤害 */
   if (e.boss) {
     popDamage(e.pos.x, e.h * 0.92, e.pos.z, Math.round(dmg).toString(), isCrit ? 'crit' : '');
     /* 血条只跟随其真正的主人（三阶段主 Boss / 法老王 / 当前主血条对象），召唤物不覆盖 */
@@ -2150,6 +2253,13 @@ function killEnemy(e) {
   if (e.dead) return;
   e.dead = true;
   G.kills++;
+  /* v0.5.0：追踪融合/同调/超量召唤击败数 */
+  if (G.fusionSummoned) G.fusionKills = (G.fusionKills || 0) + 1;
+  if (G.synchroSummoned) G.synchroKills = (G.synchroKills || 0) + 1;
+  if (G.xyzSummoned) G.xyzKills = (G.xyzKills || 0) + 1;
+  if (G.fusionKills >= 10) unlockAch('fusionKill10');
+  if (G.synchroKills >= 10) unlockAch('synchroKill10');
+  if (G.xyzKills >= 10) unlockAch('xyzKill10');
   const col = e.boss ? e.color : 0xd6a554;
   burst(e.pos.x, (e.h || 1) * 0.5, e.pos.z, e.boss ? 40 : 9, col, e.boss ? 10 : 5, e.boss ? 1.2 : 0.5, !!e.boss);
   /* 顿帧：精英/Boss 击杀时画面短暂迟滞（打击感） */
@@ -2180,6 +2290,7 @@ function killEnemy(e) {
                e.key === G.level.bosses[G.level.bosses.length - 1].key) {
       /* 决斗者王国 / 战斗都市：击破关卡最终 Boss 即通关，解锁下一座城市 */
       G.failSpec = null;                                  // 撤销限时失败倒计时
+      hideFailSpec();
       G.finalBoss = null;
       $('boss-wrap').classList.add('hidden');
       G.flashT = 0.6; G.shake = 0.9;
@@ -2222,7 +2333,7 @@ function killEnemy(e) {
   if (CHARS[G.charId].steal && !e.boss) {
     P.lp = Math.min(P.maxLP, P.lp + P.maxLP * CHARS[G.charId].steal);
   }
-  G.ult = Math.min(100, G.ult + (e.boss ? 22 : 2.2));
+  /* v0.5.0：终结技能量不再来自击杀 */
   scene.remove(e.mesh);
   if (e.groundRing) scene.remove(e.groundRing);
 }
@@ -2261,7 +2372,7 @@ function updateEnemies(dt) {
       // 招式循环
       e.moveT = (e.moveT === undefined ? 2.4 : e.moveT) - dt;
       if (e.moveT <= 0) {
-        e.moveT = rnd(2.8, 4.0);
+        e.moveT = rnd(2.8, 4.0) * (e.rageCd || 1);        // v0.5.0：狂暴时（倒计时75%节点）招式提速
         bossMove(e);
       }
       // 召唤小怪（幻神/法老王以外）
@@ -2754,6 +2865,7 @@ function tryHandEffect(forceId, skipConfirm) {
   if (!skipConfirm) { openRiskConfirm(id); return true; }
   if (!G.handCd) G.handCd = {};
   G.handCd[id] = G.time + fx.cd;
+  tutHit('handfx');                    // v0.5.2c：教学关 2「从手牌发动效果」
   startCoinFlip();
   return true;
 }
@@ -2997,7 +3109,7 @@ function makeMonsterMesh(rec) {
   let mesh = null;
   if (window.MODELS) {
     // 卡牌立牌（浮雕卡面始终面向玩家）；Boss 等无卡图时回退立体建模
-    mesh = MODELS.monster(rec, { img: img, scale: 0.86 });
+    mesh = MODELS.monster(rec, { img: img, scale: 0.86, shadow: true });   // v0.5.1：我方场上怪兽补假阴影
     const k = 1.35 - (Math.min(10, rec.level || 4) - 4) * 0.04;
     mesh.scale.multiplyScalar(k);
     g.add(mesh);
@@ -3066,10 +3178,28 @@ function nameTex(txt) {
   return tex;
 }
 
+/* v0.5.0：Boss 战场地封锁 —— 主 Boss 在场期间仅前 3 格可用（压迫感：资源被压缩） */
+function bossFightActive() {
+  return !!((G.boss && !G.boss.dead) || (G.finalBoss && !G.finalBoss.dead) || (G.pharaoh && !G.pharaoh.dead));
+}
+function fieldCap() {
+  return (G.screen === 'playing' && bossFightActive()) ? 3 : MAX_FIELD;
+}
+let _fieldLockState = false;
+function syncFieldLock() {
+  const locked = G.screen === 'playing' && bossFightActive();
+  if (locked === _fieldLockState) return;
+  _fieldLockState = locked;
+  if (locked) { toast('决斗场地封锁 · Boss 战期间仅前 3 格可用'); playSfx('reveal'); }
+  refreshFieldUI();
+}
+
 function fieldSummon(rec, slot, opt) {
-  if (G.field.length >= MAX_FIELD) return false;
-  if (slot === undefined || slot < 0 || G.field.some(m => m.slot === slot)) {
-    for (let i = 0; i < MAX_FIELD; i++) if (!G.field.some(m => m.slot === i)) { slot = i; break; }
+  const cap = fieldCap();
+  if (G.field.length >= cap) return false;
+  if (slot === undefined || slot < 0 || slot >= cap || G.field.some(m => m.slot === slot)) {
+    slot = undefined;
+    for (let i = 0; i < cap; i++) if (!G.field.some(m => m.slot === i)) { slot = i; break; }
   }
   if (slot === undefined) return false;
   const obj = makeMonsterMesh(rec);
@@ -3109,6 +3239,7 @@ function refreshFieldPositions(instant) {
 }
 
 function updateField(dt) {
+  syncFieldLock();
   for (const m of G.field) {
     m.t += dt;
     /* v0.4.0：被死者苏生复活的三幻神只能存在 30 秒 */
@@ -3156,6 +3287,15 @@ function updateField(dt) {
       if (tgt) {
         const interval = Math.max(0.42, 1.45 - m.level * 0.07) / (1 + G.atkBuff * 0.3);
         m.cd = interval;
+        /* v0.5.0：终结技能量改为怪兽攻击次数绑定，且必须王牌在场 */
+        {
+          const aceId = CHARS[G.charId] && CHARS[G.charId].ace;
+          const aceOnField = aceId && G.field.some(fm => +fm.id === +aceId);
+          if (aceOnField) {
+            G.ultAtkCount = (G.ultAtkCount || 0) + 1;
+            G.ult = Math.min(100, G.ult + 2.0);
+          }
+        }
         const dx = tgt.pos.x - m.obj.position.x, dz = tgt.pos.z - m.obj.position.z;
         const len = Math.hypot(dx, dz) || 1;
         const dmg = m.atk * 0.16 * (1 + G.atkBuff);
@@ -3231,7 +3371,7 @@ function updateField(dt) {
               toast(m.rec.name + ' · 不会因战斗破坏（HP 锁定 1）');
               burst(m.obj.position.x, 1.0, m.obj.position.z, 10, 0x9be8ff, 5, 0.5);
             }
-          } else destroyMonster(m);
+          } else { tutHit('monlost'); destroyMonster(m); }   // v0.5.2c：教学关 2「怪兽被战斗破坏」
           break;
         }
       }
@@ -3711,6 +3851,7 @@ function checkExodiaWin() {
 }
 function exodiaEnd() {
   if (G.screen === 'result') return;
+  unlockAch('exodiaOnce'); /* v0.5.0：集齐艾克佐迪亚成就 */
   gameOver(true, {
     kicker: 'EXODIA COMPLETE',
     winTitle: '封 印 解 除',
@@ -3810,6 +3951,13 @@ function fusionCandidates(card) {
 }
 
 /* ---- 召唤 ---- */
+/* v0.5.0：渐进式引导 · 检查召唤法是否已解锁 */
+function summonTypeUnlocked(type) {
+  /* v0.5.2c：教学关 1 要求同调/超量，新玩家此时还没解锁 → 教学局内全开 */
+  if (G.tut && G.tut.stage === 0) return true;
+  if (window.META && META.summonUnlocked) return META.summonUnlocked(type);
+  return true;
+}
 function performSummon(handIdx) {
   const id = G.hand[handIdx];
   const rec = CARD_DB.cards[id];
@@ -3817,6 +3965,8 @@ function performSummon(handIdx) {
   const kind = rec.kind;
 
   if (isExtraKind(kind)) {
+    /* v0.5.0：检查该召唤法是否已解锁 */
+    if (!summonTypeUnlocked(kind)) { toast('尚未解锁' + ({fusion:'融合',synchro:'同调',xyz:'超量',link:'连接'}[kind]||'') + '召唤 —— 继续游玩以解锁'); playSfx('hurt'); return false; }
     let cand = [], type = '';
     if (kind === 'synchro') {
       // 同调召唤：由玩家在弹窗中自选调整+素材
@@ -3853,15 +4003,16 @@ function performSummon(handIdx) {
 
   /* v0.4.2：仪式怪兽只能通过仪式魔法召唤，不能通常/祭品召唤 */
   if (kind === 'ritual') {
+    if (!summonTypeUnlocked('ritual')) { toast('尚未解锁仪式召唤 —— 继续游玩以解锁'); playSfx('hurt'); return false; }
     toast('「' + rec.name + '」是仪式怪兽 —— 只能通过仪式魔法从卡组特殊召唤');
     playSfx('hurt');
     return false;
   }
 
   const need = tributeNeed(rec);
-  // 满场 5 只时：禁止★1-4 通常召唤，仅允许上级召唤（解放祭品腾位）
-  if (G.field.length >= MAX_FIELD && need === 0) {
-    toast('场上已满（5 只）：只能上级召唤或融合/超量/同调'); return false;
+  // 满场时：禁止★1-4 通常召唤，仅允许上级召唤（解放祭品腾位）；v0.5.0：Boss 战封场上限 3
+  if (G.field.length >= fieldCap() && need === 0) {
+    toast(_fieldLockState ? 'Boss 战场地封锁（限 3 格）：只能上级召唤或融合/超量/同调' : '场上已满（5 只）：只能上级召唤或融合/超量/同调'); return false;
   }
   if (G.normalCd > 0) { toast('通常召唤冷却中'); return false; }
   if (G.field.length < need) { toast('需要 ' + need + ' 只祭品'); return false; }
@@ -3887,6 +4038,8 @@ function summonFromExtra(ei) {
   const rec = CARD_DB.cards[id];
   if (!rec) return false;
   const kind = rec.kind;
+  /* v0.5.0：渐进式引导 · 检查该召唤法是否已解锁 */
+  if (!summonTypeUnlocked(kind)) { toast('尚未解锁' + ({fusion:'融合',synchro:'同调',xyz:'超量',link:'连接'}[kind]||'') + '召唤 —— 继续游玩以解锁'); playSfx('hurt'); return false; }
   let cand = [], type = '';
   if (kind === 'synchro') {
     if (G.pick && G.pick.type === 'synchro' && G.pick.extraIdx === ei) { cancelPick(); return false; }
@@ -4232,7 +4385,19 @@ function confirmFusion(p) {
   idxs.sort((a, b) => b - a).forEach(i => G.hand.splice(i, 1));
   graveIds.forEach(gid => G.grave.push(gid));
   /* 场上素材破坏入墓 */
+  /* v0.5.0：融合素材返还机制 —— 被融合消耗的场上怪兽返还终结技能量 + 抽牌 */
+  const fieldMatCount = fieldMats.length;
   fieldMats.forEach(m => destroyMonster(m, true));
+  if (fieldMatCount > 0) {
+    const ultReturn = fieldMatCount * 8;
+    G.ult = Math.min(100, G.ult + ultReturn);
+    toast('融合素材返还 · 终结技能量 +' + ultReturn);
+    if (fieldMatCount >= 2) {
+      const drawCount = Math.floor(fieldMatCount / 2);
+      for (let di = 0; di < drawCount; di++) { drawCard(true, false); }
+      toast('融合素材返还 · 抽 ' + drawCount + ' 张卡');
+    }
+  }
   /* 额外卡组取走融合怪兽 */
   const at = G.extra.indexOf(rec.id);
   G.extra.splice(at >= 0 ? at : eIdx, 1);
@@ -4323,6 +4488,81 @@ function confirmPick() {
   closeSummonModal();
   refreshFieldUI();
 }
+/* ---------------- v0.5.2c 新玩家教学关（注册后前两次对局，各奖励 10000 日元） ---------------- */
+const TUT_YEN = 10000;
+const TUT_STAGES = [
+  {
+    name: '教学关 1 · 三大召唤', goals: [
+      { k: 'xyz', t: '完成 1 次超量召唤' },
+      { k: 'synchro', t: '完成 1 次同调召唤' },
+      { k: 'tribute', t: '完成 1 次上级召唤' }
+    ]
+  },
+  {
+    name: '教学关 2 · 效果与战斗', goals: [
+      { k: 'handfx', t: '从手牌发动 1 次怪兽效果' },
+      { k: 'monlost', t: '自己的怪兽被战斗破坏 1 次' }
+    ]
+  }
+];
+/* 教学起手 / 额外补充（均为卡池内科乐美真实卡牌，只影响本局，不写入存档）：
+ * 关1：魔力美容师(★2 调整) + 火箭战士×3(★4) + 恶魔的召唤(★6 上级)
+ *      超量 = ★4×2 → 霍普；同调 = ★2+★4 → 大地之骑士 盖亚骑士(额外补充)；上级 = ★6 解放 1 祭品
+ * 关2：时间魔术师（手牌硬币效果，buildDeck 已保证入卡组，这里直接塞进起手） */
+const TUT_HAND = [
+  [62154416, 30860696, 30860696, 30860696, 70781052],
+  [71625222]
+];
+const TUT_EXTRA = [[97204936], []];
+
+function setupTutorialRun() {
+  G.tut = null;
+  const stage = (window.META && META.save && typeof META.save.tut === 'number') ? META.save.tut : 2;
+  if (stage < 0 || stage > 1) return;
+  if (G.mode === 'rival') return;          // 对手决斗不做教学
+  G.tut = { stage: stage, done: {} };
+  (TUT_HAND[stage] || []).forEach(id => { if (CARD_DB.cards[id]) G.hand.push(id); });
+  (TUT_EXTRA[stage] || []).forEach(id => { if (CARD_DB.cards[id] && G.extra.indexOf(id) < 0) G.extra.push(id); });
+}
+
+function tutHit(k) {
+  if (!G.tut || G.tut.done[k]) return;
+  const st = TUT_STAGES[G.tut.stage];
+  if (!st) return;
+  const g = st.goals.find(x => x.k === k);
+  if (!g) return;
+  G.tut.done[k] = true;
+  refreshTutUI();
+  playSfx('reveal');
+  toast('教学目标达成 · ' + g.t);
+  if (st.goals.every(x => G.tut.done[x.k])) tutStageComplete();
+}
+
+/* 完成即结算：奖励入账并推进到下一关（未完成的玩家下次开局仍是同一关） */
+function tutStageComplete() {
+  const stage = G.tut.stage;
+  G.tut = null;
+  refreshTutUI();
+  if (window.META && META.save) {
+    META.save.tut = stage + 1;
+    META.addYen(TUT_YEN);
+    toast('教学完成 · 奖励 ¥ ' + TUT_YEN.toLocaleString() + ' 已到账');
+  }
+}
+
+function refreshTutUI() {
+  const p = $('tut-panel');
+  if (!p) return;
+  /* 召唤弹窗期间 G.screen === 'summon'，此时达成的目标也要刷新面板，否则弹窗关闭后目标栏会停在旧状态 */
+  if (!G.tut || (G.screen !== 'playing' && G.screen !== 'summon')) { p.classList.add('hidden'); return; }
+  const st = TUT_STAGES[G.tut.stage];
+  p.classList.remove('hidden');
+  p.innerHTML = '<div class="tut-title">' + st.name + '</div>' +
+    st.goals.map(g => '<div class="tut-goal' + (G.tut.done[g.k] ? ' ok' : '') + '"><i>' +
+      (G.tut.done[g.k] ? '✓' : '○') + '</i><span>' + g.t + '</span></div>').join('') +
+    '<div class="tut-reward">全部完成奖励 ¥ ' + TUT_YEN.toLocaleString() + '</div>';
+}
+
 function cancelPick(silent) {
   if (!G.pick) return;
   G.pick = null;
@@ -4333,6 +4573,14 @@ function cancelPick(silent) {
 
 function afterSummon(type, rec) {
   G.normalUsed = (G.normalUsed || 0) + 1;
+  /* v0.5.0：标记已使用高级召唤法（用于击败数追踪） */
+  if (type === '融合召唤') G.fusionSummoned = true;
+  if (type === '同调召唤') G.synchroSummoned = true;
+  if (type === '超量召唤') G.xyzSummoned = true;
+  /* v0.5.2c：教学关 1 目标追踪 */
+  if (type === '超量召唤') tutHit('xyz');
+  if (type === '同调召唤') tutHit('synchro');
+  if (type === '上级召唤') tutHit('tribute');
   unlockAch('firstSummon');
   if (G.field.length >= MAX_FIELD) unlockAch('fullField');
   if (type === '同调召唤') unlockAch('synchro');
@@ -4341,9 +4589,50 @@ function afterSummon(type, rec) {
   if (type === '融合召唤') unlockAch('fusion');
   playSfx('reveal');
   popDamage(P.pos.x, 2.6, P.pos.z, type + '！', 'crit');
-  addRing(P.pos.x, P.pos.z, 0.6, 4, 0, CHARS[G.charId].color, 0.7);
-  burst(P.pos.x, 1.2, P.pos.z, 16, CHARS[G.charId].color, 6, 0.7);
-  G.flashT = 0.2;
+  /* v0.5.0：召唤演出分层 —— 通常召唤定格、高级召唤专属特效 */
+  const isAdvanced = (type === '融合召唤' || type === '同调召唤' || type === '超量召唤' || type === '连接召唤' || type === '上级召唤');
+  if (type === '通常召唤') {
+    /* 通常召唤：短暂全屏卡面定格 + 音效 */
+    G.hitStop = 0.18;
+    G.flashT = 0.15;
+    playSfx('reveal');
+    addRing(P.pos.x, P.pos.z, 0.6, 3, 0, CHARS[G.charId].color, 0.5);
+    burst(P.pos.x, 1.0, P.pos.z, 10, CHARS[G.charId].color, 5, 0.5);
+  } else if (type === '融合召唤') {
+    /* 融合召唤：旋涡汇聚特效 */
+    G.hitStop = 0.3;
+    G.flashT = 0.35;
+    G.shake = Math.max(G.shake, 0.25);
+    playSfx('god');
+    addRing(P.pos.x, P.pos.z, 0.5, 8, 0, 0xa855f7, 0.9);
+    addRing(P.pos.x, P.pos.z, 1.5, 6, 0, 0x7c3aed, 0.7);
+    burst(P.pos.x, 1.2, P.pos.z, 24, 0xc084fc, 8, 0.8, true);
+  } else if (type === '同调召唤') {
+    /* 同调召唤：星光上升特效 */
+    G.hitStop = 0.3;
+    G.flashT = 0.4;
+    G.shake = Math.max(G.shake, 0.3);
+    playSfx('god');
+    addRing(P.pos.x, P.pos.z, 0.4, 10, 0, 0xffffff, 1.0);
+    addRing(P.pos.x, P.pos.z, 2.0, 5, 0, 0x7dd3fc, 0.6);
+    burst(P.pos.x, 1.5, P.pos.z, 30, 0xe0f2fe, 10, 1.0, true);
+  } else if (type === '超量召唤') {
+    /* 超量召唤：暗物质脉冲特效 */
+    G.hitStop = 0.3;
+    G.flashT = 0.35;
+    G.shake = Math.max(G.shake, 0.28);
+    playSfx('god');
+    addRing(P.pos.x, P.pos.z, 0.3, 12, 0, 0x1e1b4b, 1.0);
+    addRing(P.pos.x, P.pos.z, 1.0, 7, 0, 0x6366f1, 0.8);
+    burst(P.pos.x, 1.2, P.pos.z, 20, 0x818cf8, 9, 0.7, true);
+  } else {
+    /* 上级召唤/连接召唤等 */
+    G.hitStop = 0.22;
+    G.flashT = 0.25;
+    G.shake = Math.max(G.shake, 0.15);
+    addRing(P.pos.x, P.pos.z, 0.6, 5, 0, CHARS[G.charId].color, 0.8);
+    burst(P.pos.x, 1.2, P.pos.z, 18, CHARS[G.charId].color, 7, 0.6);
+  }
   refreshHandUI();
   refreshFieldUI();
   /* v19：读取该怪兽卡原文 → 触发对应的「登场效果」 */
@@ -4429,6 +4718,24 @@ function summonFxOf(rec) {
   fx.src = d.slice(0, 60);       // 原文片段（调试/详情用）
   rec._sfx = fx;
   return fx;
+}
+/* v0.5.0：卡面效果分类图标 —— 在抽牌瞬间完成分类 */
+/* 返回 { icon: string, label: string, color: string } 或 null */
+function fxKindIcon(rec) {
+  if (!rec || rec.kind === 'normal') return null;
+  const fx = summonFxOf(rec);
+  if (!fx) return null;
+  switch (fx.kind) {
+    case 'aoe':
+      return fx.full
+        ? { icon: '💥', label: '全场', color: '#ff6b6b' }
+        : { icon: '⚡', label: '冲击', color: '#ffd76b' };
+    case 'draw':  return { icon: '🃏', label: '抽卡', color: '#7fe6a8' };
+    case 'heal':  return { icon: '💚', label: '回复', color: '#8fe0ff' };
+    case 'atk':   return { icon: '⚔', label: '强化', color: '#ff8c42' };
+    case 'shield': return { icon: '🛡', label: '守护', color: '#a8b8ff' };
+    default: return null;
+  }
 }
 /* 卡牌详情用文案 */
 function summonFxText(rec) {
@@ -4644,7 +4951,7 @@ function reviveGraveAt(gi) {
   if (gid == null) return false;
   const rec = CARD_DB.cards[gid];
   if (!rec) return false;
-  if (G.field.length >= MAX_FIELD) { toast('场上已满，无法复活'); playSfx('hurt'); return false; }
+  if (G.field.length >= fieldCap()) { toast('场上已满，无法复活'); playSfx('hurt'); return false; }
   G.grave.splice(gi, 1);
   const m = fieldSummon(rec, undefined, { type: '特殊召唤' });
   if (!m) { G.grave.splice(gi, 0, gid); return false; }
@@ -4663,7 +4970,7 @@ function reviveGraveAt(gi) {
 function beginRevivePick() {
   if (G.screen !== 'playing') { reviveGraveAt(graveMonsterIdxs()[0]); return; }
   /* v0.4.1：场上已满时先提示再开选择器（魔法卡已消耗，避免玩家白选一场） */
-  if (G.field.length >= MAX_FIELD) { toast('场上已满，无法复活'); playSfx('hurt'); return; }
+  if (G.field.length >= fieldCap()) { toast('场上已满，无法复活'); playSfx('hurt'); return; }
   renderReviveGrid();
   G.screen = 'revpick';
   $('s-revpick').classList.remove('hidden');
@@ -4952,6 +5259,16 @@ function refreshHandUI() {
         sb.title = '登场效果 · ' + (sfx.text || '全场攻击');
         el.appendChild(sb);
       }
+      /* v0.5.0：效果分类小图标 —— 卡面角落快速分类 */
+      const fki = fxKindIcon(rec);
+      if (fki) {
+        const ki = document.createElement('div');
+        ki.className = 'fx-kind-icon';
+        ki.textContent = fki.icon;
+        ki.title = fki.label;
+        ki.style.color = fki.color;
+        el.appendChild(ki);
+      }
     } else {
       el.classList.add('spell-kind');
     }
@@ -5008,16 +5325,30 @@ function refreshHandUI() {
 }
 
 /* 艾克佐迪亚进度条（持有任意部件时显示，五件齐 → 特殊胜利） */
+/* v0.5.0：阶段性视觉提示 —— 3/5 脉动、4/5 强烈告警 */
 function refreshExodiaChip() {
   const el = $('exodia-chip');
   if (!el) return;
   const has = new Set(G.hand || []);
   const got = EXODIA_PARTS.filter(p => has.has(p.id));
-  if (!got.length) { el.classList.remove('on', 'done'); el.innerHTML = ''; return; }
+  if (!got.length) { el.classList.remove('on', 'done', 'pulse', 'alert'); el.innerHTML = ''; return; }
   el.classList.add('on');
   el.classList.toggle('done', got.length === EXODIA_PARTS.length);
+  el.classList.toggle('pulse', got.length >= 3 && got.length < 4);
+  el.classList.toggle('alert', got.length === 4);
+  if (got.length === 4 && !refreshExodiaChip._alerted) {
+    refreshExodiaChip._alerted = true;
+    playSfx('boss');
+    toast('艾克佐迪亚只差最后 1 个部件！');
+  }
+  if (got.length < 4) refreshExodiaChip._alerted = false;
   el.innerHTML = '<span class="exo-t">艾克佐迪亚</span>' +
-    '<span class="exo-pips">' + EXODIA_PARTS.map(p => '<i class="' + (has.has(p.id) ? 'on' : '') + '"></i>').join('') + '</span>' +
+    '<span class="exo-pips">' + EXODIA_PARTS.map((p, idx) => {
+      const on = has.has(p.id);
+      let cls = on ? 'on' : '';
+      if (on && got.length >= 3) cls += ' glow';
+      return '<i class="' + cls + '" style="animation-delay:' + (idx * 0.12) + 's"></i>';
+    }).join('') + '</span>' +
     '<b>' + got.length + '/' + EXODIA_PARTS.length + '</b>';
   el.title = '五部件同时在手牌即特殊胜利\n已集齐：' + got.map(p => p.name).join(' · ') +
     '\n未集齐：' + (EXODIA_PARTS.filter(p => !has.has(p.id)).map(p => p.name).join(' · ') || '无');
@@ -5214,10 +5545,12 @@ function refreshFieldUI() {
   if (!box) return;
   box.innerHTML = '';
   const pick = G.pick;
+  const cap = fieldCap();
   for (let i = 0; i < MAX_FIELD; i++) {
     const m = G.field.find(x => x.slot === i);
     const el = document.createElement('div');
     let cls = 'fslot' + (m ? ' on' : '');
+    if (i >= cap) cls += ' locked';                    // v0.5.0：Boss 战封锁格
     if (m && pick) {
       const pi = pick.picked.indexOf(m);
       if (pi >= 0) cls += ' picked';
@@ -5239,12 +5572,12 @@ function refreshFieldUI() {
         (pick ? '（点击选择/取消）' : '');
       if (pick) el.addEventListener('click', () => togglePickField(m));
     } else {
-      el.innerHTML = '<span>空</span>';
+      el.innerHTML = '<span>' + (i >= cap ? '封' : '空') + '</span>';
     }
     box.appendChild(el);
   }
   const n = $('field-count');
-  if (n) n.textContent = G.field.length + '/' + MAX_FIELD;
+  if (n) n.textContent = G.field.length + '/' + cap;
 }
 
 function showCardDetail(rec) {
@@ -5302,8 +5635,11 @@ function updateSpawn(dt) {
   const batchCap = touch ? 4 : 99;
   G.spawnT = Math.max(floor, DIFF.spawnBase * Math.pow(0.5, G.time / DIFF.spawnHalfLife));
   const batch = Math.min(batchCap, DIFF.batchBase + Math.floor(G.time / DIFF.batchEvery));
+  /* v0.5.0：Boss 战期间降低小怪刷新（间隔 ×2.8、每批封顶 2 只）—— 让 Boss 战是对决而非群殴 */
+  if (bossFightActive()) { G.spawnT *= 2.8; }
+  const batchNow = bossFightActive() ? Math.min(batch, 2) : batch;
   if (enemies.length > maxE) return;
-  for (let i = 0; i < batch; i++) {
+  for (let i = 0; i < batchNow; i++) {
     const a = Math.random() * TAU, r = rnd(23, 28);
     let x = P.pos.x + Math.cos(a) * r, z = P.pos.z + Math.sin(a) * r;
     const rr = Math.hypot(x, z);
@@ -5327,9 +5663,9 @@ function updateSpawn(dt) {
         refreshBossHud(e);
         ensurePhaseGods(1, e.pos.x, e.pos.z);
       }
-      /* 特殊失败倒计时：最终 Boss 限时未击杀 → 关卡专属毁灭演出 */
+      /* 特殊失败倒计时：最终 Boss 限时未击杀 → 关卡专属毁灭演出（v0.5.0：记录起点供进度条/里程碑） */
       if (spec.failAfter) {
-        G.failSpec = { key: spec.key, t: G.time + spec.failAfter * DIFF.failTimeMul, title: spec.failTitle, sub: spec.failSub };
+        G.failSpec = { key: spec.key, t0: G.time, t: G.time + spec.failAfter * DIFF.failTimeMul, title: spec.failTitle, sub: spec.failSub, ms: 0 };
       }
       /* 神殿关保留：三幻神同席 → 光之创造神降临 */
       if (G.level.id === 'temple') {
@@ -5337,6 +5673,44 @@ function updateSpawn(dt) {
         if (godsAlive >= 3) { holactieEnd(); return; }
       }
     }
+  }
+}
+
+/* ---------------- v0.5.0：特殊失败倒计时 · 常驻进度条 + 里程碑强化 ---------------- */
+function hideFailSpec() {
+  const w = $('failspec-wrap');
+  if (w) w.classList.add('hidden');
+  const v = $('failspec-veil');
+  if (v) v.className = '';
+}
+/* 25/50/75% 三节点：每节点触发一次可感知的 Boss 强化或环境变化 */
+function failSpecMilestone(fs, boss, stage) {
+  fs.ms = stage;
+  if (!boss || boss.dead) return;
+  if (stage === 1) {
+    boss.dmg = Math.round(boss.dmg * 1.18);
+    boss.moveT = Math.min(boss.moveT, 1.0);
+    addRing(boss.pos.x, boss.pos.z, 1.2, 9, 0, 0xff3b3b, 0.7);
+    toast('毁灭倒计时 25% · Boss 攻击强化！');
+    playSfx('boss'); G.shake = Math.max(G.shake, 0.4);
+  } else if (stage === 2) {
+    boss.dmg = Math.round(boss.dmg * 1.15);
+    boss.spd *= 1.25;
+    const v = $('failspec-veil'); if (v) v.className = 'stage2';
+    addRing(boss.pos.x, boss.pos.z, 1.2, 12, 0, 0xff2020, 0.8);
+    toast('毁灭倒计时 50% · 天空染上血色，Boss 加速！');
+    playSfx('boss'); G.shake = Math.max(G.shake, 0.6); G.flashT = Math.max(G.flashT, 0.25);
+  } else if (stage === 3) {
+    boss.rageCd = 0.6;                                 // 招式间隔 ×0.6（见 updateEnemies moveT 重置）
+    boss.dmg = Math.round(boss.dmg * 1.15);
+    const v = $('failspec-veil'); if (v) v.className = 'stage3';
+    for (let k = 0; k < 6; k++) {
+      const a = k / 6 * TAU;
+      spawnEnemy(enemyPoolByTime(G.time), boss.pos.x + Math.cos(a) * 5, boss.pos.z + Math.sin(a) * 5);
+    }
+    addRing(boss.pos.x, boss.pos.z, 1.5, 16, 0, 0xff1010, 0.9);
+    toast('毁灭倒计时 75% · Boss 狂暴！最后的挣扎');
+    playSfx('boss'); G.shake = Math.max(G.shake, 0.9); G.flashT = Math.max(G.flashT, 0.4);
   }
 }
 
@@ -5390,6 +5764,17 @@ function updatePlayer(dt) {
   else P.bob += dt * 3;
   P.model.position.set(P.pos.x, P.pos.y + (P.air ? 0.12 : Math.abs(Math.sin(P.bob)) * 0.06), P.pos.z);
   P.model.rotation.y = P.face;
+  /* v0.5.1：魔法阵 + 假阴影贴地跟随（跳跃时阴影缩小淡化，制造高度感） */
+  {
+    const gyC = groundY(P.pos.x, P.pos.z);
+    playerCircle.visible = playerShadow.visible = true;
+    playerCircle.position.set(P.pos.x, gyC + 0.05, P.pos.z);
+    playerCircle.rotation.z += dt * 0.4;
+    playerShadow.position.set(P.pos.x, gyC + 0.03, P.pos.z);
+    const airK = clamp(1 - P.jumpH * 0.22, 0.45, 1);
+    playerShadow.scale.set(0.78 * airK, 0.46 * airK, 1);
+    playerShadow.material.opacity = 0.35 * airK;
+  }
   playerLight.position.set(P.pos.x, P.pos.y + 2.2, P.pos.z);
   if (dashing) {
     P.dashT -= dt;
@@ -5463,6 +5848,17 @@ function updateHUD(dt) {
   const ub = $('ult-btn');
   ub.classList.toggle('ready', G.ult >= 100);
   $('ult-ring').style.strokeDashoffset = (289 * (1 - G.ult / 100)).toFixed(0);
+  /* v0.5.0：王牌不在场上时显示锁定状态 */
+  {
+    const aceId = CHARS[G.charId] && CHARS[G.charId].ace;
+    const aceOnField = aceId && G.field.some(fm => +fm.id === +aceId);
+    ub.classList.toggle('no-ace', !aceOnField);
+    const ultLabel = $('ult-label');
+    if (ultLabel) {
+      if (!aceOnField) { ultLabel.textContent = '锁'; ultLabel.title = '王牌未上场 · 能量锁定'; }
+      else { ultLabel.textContent = 'F'; ultLabel.title = ''; }
+    }
+  }
 }
 function updateGame(dt) {
   /* 打击感·顿帧：精英/Boss 击杀、受击瞬间画面短暂迟滞 */
@@ -5511,20 +5907,40 @@ function updateGame(dt) {
   }
   updateCamera(dt);
   updateHUD(dt);
-  /* 特殊失败：关卡最终 Boss 限时未击杀 */
+  /* 特殊失败：关卡最终 Boss 限时未击杀（v0.5.0：常驻进度条 + 里程碑） */
   if (G.failSpec && G.screen === 'playing' && !G.failSpec.done) {
     const boss = enemies.find(en => en.key === G.failSpec.key && !en.dead);
     if (!boss) {
       G.failSpec = null;                       // Boss 已被击杀，解除倒计时
-    } else if (G.time >= G.failSpec.t) {
-      G.failSpec.done = true;
-      G.flashT = 1.2; G.shake = 1.2;
-      addRing(P.pos.x, P.pos.z, 1, 40, 0, 0xffffff, 1);
-      burst(P.pos.x, 1.5, P.pos.z, 60, 0xffffff, 14, 1.4, true);
-      G.failTitle = G.failSpec.title;
-      G.failSub = G.failSpec.sub;
-      timers.push({ t: 0.8, fn: () => gameOver(false, { failTitle: G.failTitle, failSub: G.failSub }) });
-      G.failSpec = null;
+      hideFailSpec();
+    } else {
+      const total = Math.max(0.001, G.failSpec.t - G.failSpec.t0);
+      const prog = Math.min(1, (G.time - G.failSpec.t0) / total);
+      const fw = $('failspec-wrap');
+      if (fw) {
+        fw.classList.remove('hidden');
+        fw.classList.toggle('hot', prog >= 0.75);
+        $('failspec-fill').style.width = (prog * 100) + '%';
+        $('failspec-label').textContent = (G.failSpec.title || '毁灭倒计时') + ' · ' + Math.max(0, Math.ceil(G.failSpec.t - G.time)) + 's';
+        for (let ni = 1; ni <= 3; ni++) {
+          const nd = $('failspec-n' + ni);
+          if (nd) nd.classList.toggle('hit', prog >= ni * 0.25);
+        }
+      }
+      if (prog >= 0.25 && G.failSpec.ms < 1) failSpecMilestone(G.failSpec, boss, 1);
+      if (prog >= 0.5 && G.failSpec.ms < 2) failSpecMilestone(G.failSpec, boss, 2);
+      if (prog >= 0.75 && G.failSpec.ms < 3) failSpecMilestone(G.failSpec, boss, 3);
+      if (G.time >= G.failSpec.t) {
+        G.failSpec.done = true;
+        G.flashT = 1.2; G.shake = 1.2;
+        addRing(P.pos.x, P.pos.z, 1, 40, 0, 0xffffff, 1);
+        burst(P.pos.x, 1.5, P.pos.z, 60, 0xffffff, 14, 1.4, true);
+        G.failTitle = G.failSpec.title;
+        G.failSub = G.failSpec.sub;
+        timers.push({ t: 0.8, fn: () => gameOver(false, { failTitle: G.failTitle, failSub: G.failSub }) });
+        G.failSpec = null;
+        hideFailSpec();
+      }
     }
   }
   if (G.mode === 'normal' && G.level.id === 'temple' && G.time >= PHARAOH_TIME && !G.pharaoh && !G.pharaohSpawned) {
@@ -5716,7 +6132,7 @@ function ritualSummonFromDeck(eff) {
   const rid = G.deck[di];
   const rec = CARD_DB.cards[rid];
   if (!rec) { toast('卡组中没有对应的仪式怪兽'); return false; }
-  if (G.field.length >= MAX_FIELD) { toast('场上已满，无法仪式召唤'); playSfx('hurt'); return false; }
+  if (G.field.length >= fieldCap()) { toast('场上已满，无法仪式召唤'); playSfx('hurt'); return false; }
   G.deck.splice(di, 1);                 // 从卡组中取出（deckPos 仍指向原下一张）
   const m = fieldSummon(rec, undefined, { type: '仪式召唤' });
   if (!m) { G.deck.splice(di, 0, rid); return false; }
@@ -6030,6 +6446,8 @@ document.addEventListener('pointerlockerror', () => {
 });
 /* 点击画面补一次锁定请求（浏览器要求用户手势） */
 canvas.addEventListener('pointerdown', () => {
+  /* v0.5.0：首次用户交互时初始化音频（绑定到点击锁定战斗视角） */
+  if (!actx) initAudio();
   if (Cursor.want && !Cursor.locked) Cursor.request(true);
 });
 
@@ -6106,6 +6524,7 @@ $('btn-change').addEventListener('click', () => { $('s-result').classList.add('h
 /* ---------------- 音效 ---------------- */
 let actx = null;
 function initAudio() {
+window.initAudio = initAudio; /* v0.5.0：暴露给 cloud.js 等外部模块 */
   if (!actx) {
     try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { }
   }
@@ -6688,6 +7107,8 @@ function clearRun() {
   clearPickups();
   G.mag = { X: false, Y: false, Z: false }; G.burnT = 9; G.magT = 16; G.burned = 0;
   G.xyzDone = false; G.xyzT = 12; G.xyzAbs = 0; G.failSpec = null; G.failTitle = null; G.failSub = null;
+  hideFailSpec();
+  _fieldLockState = false;                               // v0.5.0：重置场地封锁状态（下局重新提示）
   G.finalBoss = null;                                  // v0.3.1：三阶段决战状态清空
   G._raDirty = false;
   camYaw = 0;
@@ -6698,12 +7119,13 @@ function clearRun() {
   for (const m of G.field) fieldGroup.remove(m.obj);
   G.field.length = 0;
   if (P.model) { scene.remove(P.model); P.model = null; }
+  playerCircle.visible = false; playerShadow.visible = false;   // v0.5.1
   G.boss = null;
   G.pharaoh = null; G.pharaohSpawned = false; G.godsCalled = {};
   $('boss-wrap').classList.add('hidden');
   G.time = 0; G.kills = 0; G.lv = 1; G.exp = 0; G.expNeed = 30;
   G.draws = 0;                                  // 抽卡机会需通过升级获得
-  G.ult = 0; G.bossIdx = 0; G.spawnT = 2;
+  G.ult = 0; G.ultAtkCount = 0; G.bossIdx = 0; G.spawnT = 2;
   G.cometT = 0; G.holeT = 0; G.shake = 0; G.flashT = 0;
   G.normalCd = 0; G.drawCd = 0; G.hand = []; G.grave = [];
   G.pick = null; G.millLeft = 5; G.millCount = 0; G.tributeCount = 0;
@@ -6726,12 +7148,25 @@ async function startRun(charId, opt) {
   const c = CHARS[charId];
   G.mode = opt.mode || 'normal';
   G.rival = opt.rival || null;
+  /* v0.5.0：渐进式引导 · 递增局数并提示新解锁的召唤法 */
+  if (window.META && META.incrementGamesPlayed) {
+    META.incrementGamesPlayed();
+    const newUnlocks = META.getNewlyUnlockedSummons();
+    if (newUnlocks.length > 0) {
+      setTimeout(() => { toast('新解锁：' + newUnlocks.join('、') + '！'); }, 2000);
+    }
+    /* v0.5.0：局数成就 */
+    const gp = META.gamesPlayedCount();
+    if (gp >= 5) unlockAch('games5');
+    if (gp >= 20) unlockAch('games20');
+  }
   /* 开局 BGM：「遊戯」（对手决斗为「決闘者の魂」） */
   setBgmTrack(G.mode === 'rival' ? 'battle' : 'yugi');
   clearRun();
   injectLevelBosses(G.level);        // 关卡专属 Boss 元数据/卡记录注入
   applyLevelScene(G.level.id);       // 切换场景主题
   buildDeck();
+  setupTutorialRun();                  // v0.5.2c：新玩家前两局为教学关（注入起手/额外）
   recalc();
   P.pos.set(0, 0, 0);
   P.lp = c.lp; P.maxLP = c.lp;
@@ -6783,13 +7218,15 @@ async function startRun(charId, opt) {
   const stRec = CARD_DB.cards[starterId];
   if (stRec) fieldSummon(stRec, 2, { type: '初始召唤' });
 
-  // 起手 4 张
-  for (let i = 0; i < 4; i++) drawCard(true, true);   // 起手手牌不耗抽卡次数
+  // 起手 4 张（v0.5.2c：教学关 1 已注入 5 张教学手牌，只补 2 张以免堵满 HAND_MAX）
+  const initDraws = (G.tut && G.tut.stage === 0) ? 2 : 4;
+  for (let i = 0; i < initDraws; i++) drawCard(true, true);   // 起手手牌不耗抽卡次数
 
   refreshHandUI();
   refreshFieldUI();
   refreshMagUI();
   G.screen = 'playing';
+  refreshTutUI();
   checkExodiaWin();                    // 起手五部件齐手也判特殊胜利
   $('timer-sub').textContent = G.mode === 'rival' ? '击败对手以解锁'
     : G.level.id === 'temple' ? ('生存至 ' + fmtTime(G.level.duration) + ' · 击败无名法老王')
@@ -6799,6 +7236,15 @@ async function startRun(charId, opt) {
   playSfx('reveal');
   /* 操作提示：移动只靠 WASD，鼠标仅转视角 */
   timers.push({ t: 0.7, fn: () => toast('WASD 移动 · 鼠标转视角（Alt 加速）· F 终结技') });
+  /* v0.5.2c：教学关开局说明 */
+  if (G.tut) {
+    timers.push({ t: 1.6, fn: () => toast(TUT_STAGES[G.tut.stage].name + ' · 完成全部目标奖励 ¥ ' + TUT_YEN.toLocaleString()) });
+    timers.push({
+      t: 3.4, fn: () => toast(G.tut && G.tut.stage === 0
+        ? '手牌已备好素材：★4×2 → 超量 · ★2调整+★4 → 同调 · ★6 解放 1 只 → 上级召唤'
+        : '起手「时间魔术师」：按 G 从手牌发动硬币效果')
+    });
+  }
   lockNow();                                    // 开局即隐藏并锁定指针（若被拒→点击画面补锁）
 }
 function pauseGame() {
@@ -6812,6 +7258,7 @@ function resumeGame() {
   if (G.screen !== 'pause') return;
   G.screen = 'playing';
   $('s-pause').classList.add('hidden');
+  refreshTutUI();                      // v0.5.2c：恢复对局时重新显示教学面板
   lockNow();                                  // 点击「继续」的手势内直接重新锁定指针
 }
 function gameOver(win, opt) {
@@ -6819,6 +7266,7 @@ function gameOver(win, opt) {
   if (G.screen === 'result') return;
   if (G.discardMode) cancelDiscardDraw(true);
   G.screen = 'result';
+  refreshTutUI();                      // v0.5.2c：结算时收起教学面板
   Cursor.sync();                       // 结算时立即释放指针
   /* 结算 BGM：勝利 / 敗北（作曲：光宗信吉） */
   setBgmTrack(win ? 'victory' : 'defeat');
@@ -6845,6 +7293,8 @@ function gameOver(win, opt) {
   }
 
   const rivalWin = win && G.mode === 'rival' && G.rival;
+  /* v0.5.2c：教学关未完成 → 结算里告知下一局继续 */
+  const tutTip = G.tut ? ('教学关未完成 · 下一局继续（奖励 ¥ ' + TUT_YEN.toLocaleString() + '）') : '';
   $('res-kicker').textContent = opt.kicker ? opt.kicker
     : opt.failTitle ? 'SPECIAL DEFEAT'
       : rivalWin ? 'DUELIST DEFEATED' : (win ? 'DUEL CLEAR' : 'DUEL OVER');
@@ -6857,7 +7307,7 @@ function gameOver(win, opt) {
       : rivalWin
         ? '你击败了 ' + CHARS[G.rival].name + ' · 已获得该决斗者的使用权'
         : (win ? (G.level.winText || '你击败了无名法老王，守住了王家神殿') : '你的 LP 归零了')
-          + (unlockedTip ? ' —— ' + unlockedTip : '');
+          + ((unlockedTip || tutTip) ? ' —— ' + (unlockedTip || tutTip) : '');
   $('res-stats').innerHTML =
     '<div><b>' + fmtTime(G.time) + '</b><span>存活时间</span></div>' +
     '<div><b>' + G.kills + '</b><span>击败怪兽</span></div>' +
@@ -6988,9 +7438,63 @@ function adaptiveRes(dt) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, RES_STEPS[resIdx]));
   }
 }
+
+/* v0.5.0：FPS 计数器 + 低画质开关 */
+let fpsFrames = 0, fpsLastTime = performance.now(), fpsCurrent = 60;
+let lowQualityMode = false;
+function updateFPS() {
+  fpsFrames++;
+  const now = performance.now();
+  if (now - fpsLastTime >= 1000) {
+    fpsCurrent = Math.round(fpsFrames * 1000 / (now - fpsLastTime));
+    fpsFrames = 0;
+    fpsLastTime = now;
+    const fpsHud = $('fps-hud');
+    if (fpsHud) fpsHud.textContent = fpsCurrent;
+    const fpsDisplay = $('fps-display');
+    if (fpsDisplay) fpsDisplay.textContent = fpsCurrent + ' FPS';
+  }
+}
+function applyLowQuality(on) {
+  lowQualityMode = on;
+  if (on) {
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.0));
+    renderer.shadowMap.enabled = false;
+    ORB_MAX = Math.min(ORB_MAX, 120);
+  } else {
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, IS_COARSE ? 1.5 : 2));
+    renderer.shadowMap.enabled = !IS_COARSE;
+    ORB_MAX = IS_COARSE ? 160 : 320;
+  }
+  const label = $('quality-label');
+  if (label) label.textContent = on ? '低' : '自动';
+  if (window.META && META.save) { META.save.lowQuality = on; META.persist(); }
+}
+function initQualitySettings() {
+  const saved = window.META && META.save && META.save.lowQuality;
+  const toggle = $('low-quality-toggle');
+  if (toggle) { toggle.checked = !!saved; applyLowQuality(!!saved); }
+  const fpsToggle = $('fps-toggle');
+  const fpsStat = $('fps-stat');
+  const fpsSaved = window.META && META.save && META.save.showFps;
+  if (fpsToggle) fpsToggle.checked = !!fpsSaved;
+  if (fpsStat) fpsStat.classList.toggle('hidden', !fpsSaved);
+  if (fpsToggle) {
+    fpsToggle.addEventListener('change', () => {
+      const show = fpsToggle.checked;
+      if (fpsStat) fpsStat.classList.toggle('hidden', !show);
+      if (window.META && META.save) { META.save.showFps = show; META.persist(); }
+    });
+  }
+  if (toggle) {
+    toggle.addEventListener('change', () => applyLowQuality(toggle.checked));
+  }
+}
+
 let last = performance.now();
 function tick(now) {
   requestAnimationFrame(tick);
+  updateFPS();
   let dt = (now - last) / 1000;
   last = now;
   dt = Math.min(dt, 0.05);
@@ -7056,6 +7560,8 @@ Promise.all(preload).then(() => {
   buildMenu();
   menuGroup.visible = G.screen !== 'playing';
 });
+/* v0.5.0：初始化画质设置 */
+initQualitySettings();
 requestAnimationFrame(tick);
 
 // 调试钩子
@@ -7078,6 +7584,9 @@ window.__DS = {
   updateBestLine, showSelect, showLevels,
   /* v0.2.8：版本号 */
   GAME_VERSION,
+  /* v0.5.2c：新玩家教学关 */
+  TUT_STAGES, TUT_HAND, TUT_EXTRA, TUT_YEN,
+  setupTutorialRun, tutHit, tutStageComplete, refreshTutUI,
   startTributePick, startXyzPick, startSynchroPick, openSummonModal, closeSummonModal, renderSummonSlots,
   toggleExtraPanel, closeExtraPanel, renderExtraGrid, rivalPlayCard, magicImmune, pickupMesh, extraCanSummon,
   imgCache, camera, loadImg, keys: keys,
