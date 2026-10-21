@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23c9a06a'/%3E%3Ctext x='16' y='23' font-size='18' text-anchor='middle' fill='%231a1206' font-family='serif'%3E遊%3C/text%3E%3C/svg%3E" />
 <title>决斗幸存者 · DUEL SURVIVOR</title>
-<link rel="stylesheet" href="css/style.css?v=042g" />
+<link rel="stylesheet" href="css/style.css?v=058" />
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -32,6 +32,9 @@
     </div>
   </div>
 
+  <!-- v0.5.2c：新玩家教学关目标面板（内容由 game.js refreshTutUI 填充） -->
+  <div id="tut-panel" class="hidden"></div>
+
   <div class="hud-top">
     <div class="timer" id="timer">00:00</div>
     <div class="timer-sub" id="timer-sub">生存至 08:00</div>
@@ -40,11 +43,24 @@
       <div class="boss-track"><div class="boss-fill" id="boss-fill"></div></div>
       <div class="boss-hp" id="boss-hp"></div>
     </div>
+    <!-- v0.5.0：特殊失败倒计时 · 常驻进度条（25/50/75% 里程碑节点） -->
+    <div class="failspec-wrap hidden" id="failspec-wrap">
+      <div class="failspec-label" id="failspec-label">毁灭倒计时</div>
+      <div class="failspec-track">
+        <div class="failspec-fill" id="failspec-fill"></div>
+        <i class="failspec-node" id="failspec-n1" style="left:25%"></i>
+        <i class="failspec-node" id="failspec-n2" style="left:50%"></i>
+        <i class="failspec-node" id="failspec-n3" style="left:75%"></i>
+      </div>
+    </div>
+    <div id="failspec-veil"></div>
   </div>
 
   <div class="hud-tr">
     <div class="stat"><b id="kill-count">0</b><span>击败</span></div>
     <div class="stat"><b id="lv-count">1</b><span>等级</span></div>
+    <!-- v0.5.0：FPS 计数器 -->
+    <div class="stat fps-stat hidden" id="fps-stat"><b id="fps-hud">60</b><span>FPS</span></div>
     <!-- v0.4.2：全屏 / 手牌按钮移入 HUD 右上角（仅触屏显示），彻底避免与手牌卡背重叠 -->
     <button class="tbtn tb-full" id="tb-full" type="button" title="全屏"><b>全屏</b></button>
     <button class="tbtn tb-hand" id="tb-hand" type="button" title="手牌"><b>手牌</b></button>
@@ -131,7 +147,7 @@
 
 <!-- ========== 标题 ========== -->
 <div class="screen" id="s-title">
-  <div class="ver-badge" id="ver-badge"><i></i>v0.4.2g</div>
+  <div class="ver-badge" id="ver-badge"><i></i>v0.5.2</div>
   <div class="auth-user-chip" id="auth-user-chip"></div>
   <div class="title-wrap">
     <div class="title-kicker">游戏王 · 生存对决</div>
@@ -231,6 +247,17 @@
       <b id="bgm-vol-num">35%</b>
     </div>
     <div class="bgm-now" id="bgm-now">♪ <b>千年アイテム</b><span>光宗信吉 · 程序化改编</span></div>
+    <!-- v0.5.0：低画质开关 + FPS 显示 -->
+    <div class="bgm-row">
+      <span class="bgm-label">🖥 低画质模式</span>
+      <label class="quality-toggle"><input type="checkbox" id="low-quality-toggle"><span class="quality-slider"></span></label>
+      <b id="quality-label">自动</b>
+    </div>
+    <div class="bgm-row">
+      <span class="bgm-label">📊 帧率显示</span>
+      <label class="quality-toggle"><input type="checkbox" id="fps-toggle"><span class="quality-slider"></span></label>
+      <b id="fps-display">-- FPS</b>
+    </div>
     <div class="panel-btns">
       <button class="btn btn-primary" id="btn-resume">继续决斗</button>
       <button class="btn btn-ghost" id="btn-restart">重新开始</button>
@@ -483,7 +510,7 @@
 
 <script src="js/three.min.js"></script>
 <script src="js/card3d.js"></script>
-<script src="js/models3d.js?v=042g"></script>
+<script src="js/models3d.js?v=058"></script>
 <script src="data/cards.js"></script>
 <script src="data/cards_ext.js"></script>
 <script>
@@ -501,9 +528,11 @@ window.DS_PUBLIC_CONFIG = {
 };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
-<script src="js/cloud.js?v=042g"></script>
-<script src="js/meta.js?v=042g"></script>
-<script src="js/game.js?v=042g"></script>
-<script src="js/touch.js?v=042g"></script>
+<script src="js/sha256.js?v=058"></script>
+<script src="js/localdb.js?v=058"></script>
+<script src="js/cloud.js?v=058"></script>
+<script src="js/meta.js?v=058"></script>
+<script src="js/game.js?v=058"></script>
+<script src="js/touch.js?v=058"></script>
 </body>
 </html>

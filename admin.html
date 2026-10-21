@@ -115,6 +115,8 @@ window.DS_PUBLIC_CONFIG = {
 };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
+<script src="js/sha256.js?v=054"></script>
+<script src="js/localdb.js?v=054"></script>
 <script>
 (function () {
   'use strict';
@@ -125,14 +127,25 @@ window.DS_PUBLIC_CONFIG = {
   const KEY = 'ds_admin_session_v1';
 
   async function sha256(s) {
-    const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
-    return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
+    if (window.crypto && crypto.subtle) {
+      const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+      return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
+    }
+    /* v0.5.2b：非安全上下文（http://局域网IP）无 crypto.subtle，走纯 JS 实现（摘要一致） */
+    if (window.DSSHA256) return DSSHA256.hexUtf8(s);
+    throw new Error('当前环境不支持安全哈希（需要 https 或 localhost）');
   }
   const hashPwd = p => sha256(SALT + p);
   const fmtTime = t => t ? new Date(t).toLocaleString('zh-CN', { hour12: false }) : '—';
   function line(el, msg, good) { el.textContent = msg; el.className = 'line ' + (good ? 'good' : 'bad'); }
 
   function initCloud() {
+    /* v0.5.2：本地后端优先（?localapi=1）——管理后台同样可连本地 server.py 发日元；
+     * 默认仍走远程 SDK，DS_PUBLIC_CONFIG.endpoint 保持不变 */
+    if (window.DSLocalDB && window.DSLocalDB.enabled()) {
+      cloud = window.DSLocalDB.create();
+      return;
+    }
     cloud = WorkBuddyCloud.createWorkBuddyCloud({
       endpoint: window.DS_PUBLIC_CONFIG.endpoint,
       oauthRelayBaseUrl: window.DS_PUBLIC_CONFIG.oauthRelayBaseUrl,

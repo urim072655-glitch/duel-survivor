@@ -18,7 +18,14 @@
     { k: 'kill500', n: '五百人斩', d: '单局击败 500 只怪兽', y: 1500 },
     { k: 'draw20', n: '抽卡如瀑', d: '单局抽 20 张卡', y: 300 },
     { k: 'pack10', n: '包瘾患者', d: '累计开启 10 个卡包', y: 500 },
-    { k: 'clear', n: '神殿征服', d: '通关王家神殿', y: 3000 }
+    { k: 'clear', n: '神殿征服', d: '通关王家神殿', y: 3000 },
+    /* v0.5.0：极简解锁线 —— 成就附带解锁物 */
+    { k: 'fusionKill10', n: '融合大师', d: '用融合召唤的怪兽累计击败 10 个敌人', y: 1200, unlock: { type: 'card', id: 1533699, name: '融合支援卡 · 融合之门' } },
+    { k: 'exodiaOnce', n: '封印解除', d: '集齐艾克佐迪亚一次', y: 5000, unlock: { type: 'cardback', id: 'exodia', name: '艾克佐迪亚卡背' } },
+    { k: 'synchroKill10', n: '同调达人', d: '用同调召唤的怪兽累计击败 10 个敌人', y: 1200, unlock: { type: 'card', id: 2567839, name: '同调支援卡 · 同调素材' } },
+    { k: 'xyzKill10', n: '超量高手', d: '用超量召唤的怪兽累计击败 10 个敌人', y: 1200, unlock: { type: 'card', id: 18940725, name: '超量支援卡 · 超量单元' } },
+    { k: 'games5', n: '决斗老手', d: '累计游玩 5 局', y: 800, unlock: { type: 'avatar', id: 'duelist5', name: '决斗者头像 · 铜' } },
+    { k: 'games20', n: '决斗大师', d: '累计游玩 20 局', y: 2000, unlock: { type: 'avatar', id: 'duelist20', name: '决斗者头像 · 金' } }
   ];
 
   // 初始额外卡组（均为可通过场上素材正规召唤的怪兽）
@@ -64,6 +71,9 @@
       packsOpened: 0,
       games: 0,
       totalKills: 0,
+      gamesPlayed: 0,
+      tut: 0,
+      unlocks: {},
       created: Date.now()
     };
   }
@@ -84,6 +94,12 @@
     if (!S.levels) S.levels = ['temple'];
     if (S.bgmVol === undefined) S.bgmVol = 0.35;
     if (!S.lastChar) S.lastChar = 'yugi';
+    if (S.gamesPlayed === undefined) S.gamesPlayed = S.games || 0;
+    /* v0.5.2c：教学关只发给新注册玩家 —— 老存档无此字段 → 视为已完成教学 */
+    if (S.tut === undefined) S.tut = 2;
+    if (!S.unlocks) S.unlocks = {};
+    if (S.lowQuality === undefined) S.lowQuality = false;
+    if (S.showFps === undefined) S.showFps = false;
     // 补齐缺失的初始卡（版本升级时）
     if (!S.decks) S.decks = defaultSave().decks;
     Object.keys(S.decks).forEach(w => {
@@ -209,6 +225,31 @@
     if (who) S.lastChar = who;    persist();
   }
 
+  /* ---------------- v0.5.0：渐进式引导 · 分局解锁召唤法 ---------------- */
+  /* 解锁顺序：通常召唤(始终) → 融合(第2局) → 同调(第3局) → 超量(第4局) → 连接(第5局) → 仪式(第6局) */
+  const SUMMON_UNLOCK_ORDER = [
+    { type: 'normal',   label: '通常召唤', game: 0 },
+    { type: 'fusion',   label: '融合召唤', game: 1 },
+    { type: 'synchro',  label: '同调召唤', game: 2 },
+    { type: 'xyz',      label: '超量召唤', game: 3 },
+    { type: 'link',     label: '连接召唤', game: 4 },
+    { type: 'ritual',   label: '仪式召唤', game: 5 }
+  ];
+  function summonUnlocked(type) {
+    const entry = SUMMON_UNLOCK_ORDER.find(e => e.type === type);
+    if (!entry) return true;
+    return (S.gamesPlayed || 0) >= entry.game;
+  }
+  function incrementGamesPlayed() {
+    S.gamesPlayed = (S.gamesPlayed || 0) + 1;
+    persist();
+  }
+  function getNewlyUnlockedSummons() {
+    const gp = S.gamesPlayed || 0;
+    return SUMMON_UNLOCK_ORDER.filter(e => e.game === gp).map(e => e.label);
+  }
+  function gamesPlayedCount() { return S.gamesPlayed || 0; }
+
   /* ---------------- 成就 ---------------- */
   function unlock(k) {
     if (S.ach[k]) return;
@@ -216,7 +257,15 @@
     if (!a) return;
     S.ach[k] = Date.now();
     addYen(a.y);
-    if (global.GAME_TOAST) global.GAME_TOAST('成就达成 · ' + a.n + '　+¥' + a.y);
+    /* v0.5.0: achievement unlock reward */
+    let unlockMsg = '';
+    if (a.unlock) {
+      if (!S.unlocks) S.unlocks = {};
+      S.unlocks[a.unlock.id] = { type: a.unlock.type, name: a.unlock.name, at: Date.now() };
+      unlockMsg = ' · 解锁：' + a.unlock.name;
+      persist();
+    }
+    if (global.GAME_TOAST) global.GAME_TOAST('成就达成 · ' + a.n + ' +¥' + a.y + unlockMsg);
     renderAch();
   }
   function achCount() { return Object.keys(S.ach || {}).length; }
@@ -637,9 +686,11 @@
     box.innerHTML = '<div class="ach-head">已达成 <b>' + done + '</b> / ' + ACH.length + '</div>' +
       '<div class="ach-grid">' + ACH.map(a => {
         const on = !!S.ach[a.k];
+        const unlockBadge = a.unlock ? '<div class="ach-unlock' + (on ? ' unlocked' : '') + '">' +
+          (on ? '🔓 ' : '🔒 ') + a.unlock.name + '</div>' : '';
         return '<div class="ach-item' + (on ? ' on' : '') + '">' +
           '<div class="ach-ic">' + (on ? '✓' : '?') + '</div>' +
-          '<div class="ach-tx"><b>' + a.n + '</b><span>' + a.d + '</span></div>' +
+          '<div class="ach-tx"><b>' + a.n + '</b><span>' + a.d + '</span>' + unlockBadge + '</div>' +
           '<div class="ach-y">¥' + a.y + '</div></div>';
       }).join('') + '</div>';
   }
@@ -652,6 +703,7 @@
     openPack, buyDigi, openDigiView, digiPack, renderShop, renderDeck, renderAch, bindDeckTabs,
     get save() { return S; },
     isUnlocked, unlockChar, markSelectSeen, levelUnlocked, unlockLevel, grantCard,
+    summonUnlocked, incrementGamesPlayed, getNewlyUnlockedSummons, gamesPlayedCount, SUMMON_UNLOCK_ORDER,
     resetDraft() { draft = null; },
     setEditWho(w) { editWho = w; draft = null; }
   };
